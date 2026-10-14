@@ -1,0 +1,7 @@
+node_modules
+dist
+*.local
+playwright-report
+test-results
+CLAUDE.local.md
+.claude/settings.local.json
