@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": ["Bash(git status*)", "Bash(git diff*)", "Bash(git add *)", "Bash(git commit *)"],
+    "deny": ["Bash(git push *)", "Bash(git reset *)", "Bash(git rebase *)"]
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  }
+}
