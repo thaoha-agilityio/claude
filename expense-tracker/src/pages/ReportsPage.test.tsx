@@ -83,7 +83,8 @@ test('shows an empty state for a month without expenses', async () => {
   expect(screen.getByText(/^Total:/)).toHaveTextContent(/0\s₫/)
 })
 
-test('skips stored expenses with malformed dates instead of crashing', () => {
+test('ignores stored expenses with malformed dates instead of crashing', () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
   seed()
   const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
   raw.expenses.push({ ...raw.expenses[0], id: 'bad', date: '2026-10-5' })
