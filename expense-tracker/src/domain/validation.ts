@@ -42,7 +42,8 @@ export function validateExpense(
   if (categoryId === '') errors.categoryId = 'Choose a category'
   else if (!categories.some((c) => c.id === categoryId)) errors.categoryId = 'This category no longer exists'
 
-  if (charLength(notes) > MAX_NOTES_LENGTH) {
+  // Measure trimmed notes, since that is what gets stored.
+  if (charLength(notes.trim()) > MAX_NOTES_LENGTH) {
     errors.notes = `Notes must be at most ${MAX_NOTES_LENGTH} characters`
   }
 

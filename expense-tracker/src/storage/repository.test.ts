@@ -87,6 +87,12 @@ describe('expenses', () => {
     expect(stored().expenses).toEqual([b])
   })
 
+  it('accepts notes that fit the limit once trimmed', () => {
+    const { repo, input } = setup()
+    const expense = repo.addExpense(input({ notes: 'a'.repeat(500) + '\n' }))
+    expect(expense.notes).toBe('a'.repeat(500))
+  })
+
   it('rejects invalid input with field errors and changes nothing', () => {
     const { repo, input } = setup()
     const before = repo.getData()
