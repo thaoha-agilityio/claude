@@ -63,6 +63,11 @@ describe('validateExpense', () => {
     expect(validateExpense(draft({ notes: 'x'.repeat(501) }), categories).notes).toMatch(/at most 500/)
   })
 
+  it('measures notes after trimming', () => {
+    expect(validateExpense(draft({ notes: '  ' + 'x'.repeat(500) + '\n' }), categories)).toEqual({})
+    expect(validateExpense(draft({ notes: ' ' + 'x'.repeat(501) + ' ' }), categories).notes).toMatch(/at most 500/)
+  })
+
   it('reports every invalid field at once', () => {
     const errors = validateExpense({ amount: null, date: '', categoryId: '', notes: 'x'.repeat(501) }, categories)
     expect(Object.keys(errors).sort()).toEqual(['amount', 'categoryId', 'date', 'notes'])
