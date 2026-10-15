@@ -7,7 +7,7 @@
 
 .error {
   margin: 0.25rem 0 0;
-  color: #b00020;
+  color: var(--color-danger);
   font-size: 0.9rem;
 }
 
@@ -15,6 +15,10 @@
   display: grid;
   gap: 0.25rem;
   margin-bottom: 0.75rem;
+}
+
+.field label {
+  font-weight: 500;
 }
 
 .field input,

@@ -3,7 +3,7 @@ import ExpenseForm from '../components/ExpenseForm'
 import ExpenseList from '../components/ExpenseList'
 import { editButtonId } from '../components/ids'
 import MonthPicker from '../components/MonthPicker'
-import { isValidDate, todayInHcm } from '../domain/dates'
+import { todayInHcm } from '../domain/dates'
 import { formatVnd } from '../domain/money'
 import type { Expense } from '../domain/types'
 import type { ExpenseInput } from '../storage/repository'
@@ -30,9 +30,8 @@ export default function ExpensesPage() {
     setEditing(null)
   }
 
-  // Skips malformed stored dates instead of crashing the page on them.
   const visible = useMemo(
-    () => data.expenses.filter((e) => isValidDate(e.date) && e.date.startsWith(`${month}-`)).sort(byNewest),
+    () => data.expenses.filter((e) => e.date.startsWith(`${month}-`)).sort(byNewest),
     [data.expenses, month],
   )
   const total = visible.reduce((sum, e) => sum + e.amount, 0)

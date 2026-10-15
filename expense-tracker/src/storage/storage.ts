@@ -1,4 +1,6 @@
+import { isValidDate } from '../domain/dates'
 import type { Category, Expense, StoreData } from '../domain/types'
+import { MAX_AMOUNT, MIN_AMOUNT } from '../domain/validation'
 
 export const STORAGE_KEY = 'expense-tracker:v1'
 export const CURRENT_VERSION = 1
@@ -52,9 +54,17 @@ const isExpense = (v: unknown): v is Expense =>
   isString(v.createdAt) &&
   isString(v.updatedAt)
 
+/** Shape check plus the value rules the rest of the app relies on (report functions throw on bad dates). */
+const isValidExpense = (v: unknown): v is Expense =>
+  isExpense(v) && isValidDate(v.date) && v.amount >= MIN_AMOUNT && v.amount <= MAX_AMOUNT
+
+const expenseCount = (raw: unknown) => (isObject(raw) && Array.isArray(raw.expenses) ? raw.expenses.length : 0)
+
 /**
  * Upgrades parsed storage JSON to the current StoreData shape.
- * Returns null when it is unrecognised: wrong shape, or a version this build does not know (e.g. newer).
+ * Invalid expenses (wrong shape, malformed date, amount out of range) are dropped and the rest kept.
+ * Returns null when the data as a whole is unrecognised: wrong shape, invalid categories,
+ * or a version this build does not know (e.g. newer).
  * Future versions add a `case` per old version that converts it one step forward.
  */
 export function migrate(raw: unknown): StoreData | null {
@@ -64,10 +74,9 @@ export function migrate(raw: unknown): StoreData | null {
       if (
         Array.isArray(raw.categories) &&
         raw.categories.every(isCategory) &&
-        Array.isArray(raw.expenses) &&
-        raw.expenses.every(isExpense)
+        Array.isArray(raw.expenses)
       ) {
-        return { version: 1, categories: raw.categories, expenses: raw.expenses }
+        return { version: 1, categories: raw.categories, expenses: raw.expenses.filter(isValidExpense) }
       }
       return null
     default:
@@ -75,10 +84,23 @@ export function migrate(raw: unknown): StoreData | null {
   }
 }
 
+/** Copies the raw stored text to a timestamped backup key. Returns the key, or null if the write failed. */
+function backUp(text: string, storage: Storage, now: () => Date): string | null {
+  const key = `${STORAGE_KEY}:corrupt:${now().toISOString()}`
+  try {
+    storage.setItem(key, text)
+    return key
+  } catch {
+    return null
+  }
+}
+
 /**
  * Loads app data. With nothing stored, returns seeded defaults.
  * Unreadable or unrecognised data is copied to a backup key, a warning is logged, and seeded defaults
  * are returned, so the next save cannot silently destroy the only copy.
+ * If only some expenses are invalid, they are dropped: the original is backed up and, once the backup
+ * has succeeded, the cleaned data is saved so the backup happens once rather than on every load.
  */
 export function loadData(deps: StorageDeps = {}): StoreData {
   const { storage, now } = resolve(deps)
@@ -92,21 +114,36 @@ export function loadData(deps: StorageDeps = {}): StoreData {
   }
   if (text === null) return createSeedData(deps)
 
+  let raw: unknown
   let data: StoreData | null = null
   try {
-    data = migrate(JSON.parse(text))
+    raw = JSON.parse(text)
+    data = migrate(raw)
   } catch {
     // Invalid JSON: handled below like any unrecognised data.
   }
-  if (data) return data
 
-  const backupKey = `${STORAGE_KEY}:corrupt:${now().toISOString()}`
-  try {
-    storage.setItem(backupKey, text)
-  } catch {
-    // Best effort; the warning below still reports the problem.
+  if (data) {
+    const dropped = expenseCount(raw) - data.expenses.length
+    if (dropped === 0) return data
+    const backupKey = backUp(text, storage, now)
+    if (backupKey) {
+      try {
+        saveData(data, deps)
+      } catch {
+        // Not saved now; the next successful change saves the cleaned data.
+      }
+    }
+    console.warn(
+      `[storage] Dropped ${dropped} invalid expense(s); original ${backupKey ? `backed up to "${backupKey}"` : 'could not be backed up'}.`,
+    )
+    return data
   }
-  console.warn(`[storage] Saved data was unreadable; backed up to "${backupKey}" and reset to defaults.`)
+
+  const backupKey = backUp(text, storage, now)
+  console.warn(
+    `[storage] Saved data was unreadable; ${backupKey ? `backed up to "${backupKey}"` : 'backup failed'} and reset to defaults.`,
+  )
   return createSeedData(deps)
 }
 

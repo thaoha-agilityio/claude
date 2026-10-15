@@ -118,7 +118,8 @@ test('deletes an expense after confirmation, including one being edited', async 
   expect(stored()).toEqual([])
 })
 
-test('skips stored expenses with malformed dates instead of crashing', () => {
+test('ignores stored expenses with malformed dates instead of crashing', () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
   const repo = createRepository()
   const food = repo.getData().categories[0].id
   repo.addExpense({ amount: 30000, date: '2026-10-01', categoryId: food, notes: '' })

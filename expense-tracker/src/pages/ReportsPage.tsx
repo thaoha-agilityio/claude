@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import MonthPicker from '../components/MonthPicker'
-import { isValidDate, todayInHcm } from '../domain/dates'
+import { todayInHcm } from '../domain/dates'
 import { formatVnd } from '../domain/money'
 import { monthlyTotal, totalsByCategory } from '../domain/reports'
 import { useStore } from '../state/store'
@@ -13,8 +13,7 @@ export default function ReportsPage() {
   const { data } = useStore()
   const [month, setMonth] = useState(() => todayInHcm().slice(0, 7))
 
-  // Report functions reject malformed dates; skip such stored records rather than crash the page.
-  const expenses = useMemo(() => data.expenses.filter((e) => isValidDate(e.date)), [data.expenses])
+  const { expenses } = data
   const total = useMemo(() => monthlyTotal(expenses, month), [expenses, month])
   const rows = useMemo(() => totalsByCategory(expenses, data.categories, month), [expenses, data.categories, month])
   const count = rows.reduce((n, r) => n + r.count, 0)
