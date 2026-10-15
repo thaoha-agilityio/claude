@@ -17,6 +17,8 @@ type Props = {
   onCancel?: () => void
   /** Default date for a new expense; defaults to today in Ho Chi Minh City. */
   today?: string
+  /** Focus the amount field on mount (e.g. when an edit starts). */
+  autoFocus?: boolean
 }
 
 type Fields = { amount: string; date: string; categoryId: string; notes: string }
@@ -38,7 +40,7 @@ function initialFields(expense: Expense | undefined, today: string): Fields {
  * and focuses the first invalid one. After a successful create it clears amount and notes but keeps
  * date and category, for entering several expenses in a row.
  */
-export default function ExpenseForm({ categories, expense, onSubmit, onCancel, today }: Props) {
+export default function ExpenseForm({ categories, expense, onSubmit, onCancel, today, autoFocus }: Props) {
   const id = useId()
   const [fields, setFields] = useState(() => initialFields(expense, today ?? todayInHcm()))
   const [errors, setErrors] = useState<ValidationErrors<ExpenseField>>({})
@@ -110,6 +112,7 @@ export default function ExpenseForm({ categories, expense, onSubmit, onCancel, t
           value={fields.amount}
           onChange={(text) => set('amount', text)}
           placeholder="50.000"
+          autoFocus={autoFocus}
         />
         {fieldError('amount')}
       </div>
