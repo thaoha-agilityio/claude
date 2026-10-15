@@ -98,9 +98,10 @@ function backUp(text: string, storage: Storage, now: () => Date): string | null 
 /**
  * Loads app data. With nothing stored, returns seeded defaults.
  * Unreadable or unrecognised data is copied to a backup key, a warning is logged, and seeded defaults
- * are returned, so the next save cannot silently destroy the only copy.
+ * are returned; once the backup has succeeded the defaults are saved, so the backup happens once
+ * rather than on every load. If the backup fails, the original is left in place.
  * If only some expenses are invalid, they are dropped: the original is backed up and, once the backup
- * has succeeded, the cleaned data is saved so the backup happens once rather than on every load.
+ * has succeeded, the cleaned data is saved for the same reason.
  */
 export function loadData(deps: StorageDeps = {}): StoreData {
   const { storage, now } = resolve(deps)
@@ -141,10 +142,18 @@ export function loadData(deps: StorageDeps = {}): StoreData {
   }
 
   const backupKey = backUp(text, storage, now)
+  const seed = createSeedData(deps)
+  if (backupKey) {
+    try {
+      saveData(seed, deps)
+    } catch {
+      // Not saved now; the next successful change replaces the unreadable data.
+    }
+  }
   console.warn(
     `[storage] Saved data was unreadable; ${backupKey ? `backed up to "${backupKey}"` : 'backup failed'} and reset to defaults.`,
   )
-  return createSeedData(deps)
+  return seed
 }
 
 /** The raw stored text, or null when nothing is stored or storage cannot be read. */
