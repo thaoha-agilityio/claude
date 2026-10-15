@@ -147,6 +147,15 @@ export function loadData(deps: StorageDeps = {}): StoreData {
   return createSeedData(deps)
 }
 
+/** The raw stored text, or null when nothing is stored or storage cannot be read. */
+export function readStoredText(deps: StorageDeps = {}): string | null {
+  try {
+    return resolve(deps).storage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
 /** Persists app data. Throws if storage is unavailable or full, so callers can tell the user. */
 export function saveData(data: StoreData, deps: StorageDeps = {}): void {
   resolve(deps).storage.setItem(STORAGE_KEY, JSON.stringify(data))

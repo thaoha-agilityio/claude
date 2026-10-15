@@ -132,6 +132,44 @@ describe('categories', () => {
   })
 })
 
+describe('two tabs sharing storage', () => {
+  it('saves the seeded defaults on first run, so a second tab gets the same categories', () => {
+    const a = createRepository(deps())
+    expect(stored().categories).toEqual(a.getData().categories)
+    expect(createRepository(deps()).getData().categories).toEqual(a.getData().categories)
+  })
+
+  it('keeps changes made in both tabs', () => {
+    const { repo: tabA, input } = setup()
+    const tabB = createRepository(deps())
+
+    const fromA = tabA.addExpense(input({ notes: 'A' }))
+    const fromB = tabB.addExpense(input({ notes: 'B' }))
+
+    expect(tabB.getData().expenses).toEqual([fromA, fromB])
+    expect(stored().expenses).toEqual([fromA, fromB])
+  })
+
+  it('validates against the other tab’s latest data', () => {
+    const { repo: tabA, food, input } = setup()
+    const tabB = createRepository(deps())
+    tabA.addExpense(input())
+
+    expect(() => tabB.deleteCategory(food.id)).toThrow(CategoryInUseError)
+    expect(tabB.getData().expenses).toHaveLength(1)
+  })
+
+  it('reload() picks up another tab’s save and keeps the snapshot otherwise', () => {
+    const { repo: tabA } = setup()
+    const tabB = createRepository(deps())
+    const before = tabB.getData()
+    expect(tabB.reload()).toBe(before)
+
+    tabA.addCategory('Pets')
+    expect(tabB.reload().categories.map((c) => c.name)).toContain('Pets')
+  })
+})
+
 describe('persistence failures', () => {
   it('leaves in-memory data unchanged and rethrows when saving fails', () => {
     const { repo, input } = setup()

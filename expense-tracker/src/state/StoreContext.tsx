@@ -1,5 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createRepository, type Repository } from '../storage/repository'
+import { STORAGE_KEY } from '../storage/storage'
 import { StoreContext, type Store, type StoreActions } from './store'
 
 type Props = { children: ReactNode; repository?: Repository }
@@ -8,15 +9,26 @@ export function StoreProvider({ children, repository }: Props) {
   const [repo] = useState(() => repository ?? createRepository())
   const [data, setData] = useState(repo.getData)
 
-  // Each action delegates to the repository (which persists), then publishes the new snapshot.
-  // If the repository throws, the snapshot is unchanged and the error reaches the caller.
+  // Another tab saved: show its data. (The event only fires in other tabs, never the one that wrote.)
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY || e.key === null) setData(repo.reload())
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [repo])
+
+  // Each action delegates to the repository (which persists), then publishes the snapshot.
+  // Publish even if it throws: the repository may have reloaded another tab's changes first.
   const actions = useMemo<StoreActions>(() => {
     const sync =
       <A extends unknown[], R>(fn: (...args: A) => R) =>
       (...args: A): R => {
-        const result = fn(...args)
-        setData(repo.getData())
-        return result
+        try {
+          return fn(...args)
+        } finally {
+          setData(repo.getData())
+        }
       }
     return {
       addExpense: sync(repo.addExpense),
