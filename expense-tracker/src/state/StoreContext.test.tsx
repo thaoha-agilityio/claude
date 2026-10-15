@@ -1,7 +1,7 @@
 import { render, renderHook, act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { CategoryInUseError, ValidationError } from '../storage/repository'
+import { CategoryInUseError, createRepository, ValidationError } from '../storage/repository'
 import { STORAGE_KEY } from '../storage/storage'
 import { StoreProvider } from './StoreContext'
 import { useStore } from './store'
@@ -72,6 +72,35 @@ test('errors reach the caller and leave data unchanged', () => {
     result.current.addExpense({ amount: 1000, date: '2026-10-15', categoryId, notes: '' })
   })
   expect(() => act(() => result.current.deleteCategory(categoryId))).toThrow(CategoryInUseError)
+})
+
+test('shows changes saved by another tab', () => {
+  const { result } = renderHook(useStore, { wrapper })
+  const otherTab = createRepository()
+  otherTab.addCategory('Pets')
+  expect(result.current.data.categories.map((c) => c.name)).not.toContain('Pets')
+
+  act(() => {
+    window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }))
+  })
+  expect(result.current.data.categories.map((c) => c.name)).toContain('Pets')
+})
+
+test('a failed action still shows data another tab saved', () => {
+  const { result } = renderHook(useStore, { wrapper })
+  const otherTab = createRepository()
+  otherTab.addCategory('Pets')
+
+  let error: unknown
+  act(() => {
+    try {
+      result.current.addCategory('pets')
+    } catch (err) {
+      error = err
+    }
+  })
+  expect(error).toBeInstanceOf(ValidationError)
+  expect(result.current.data.categories.map((c) => c.name)).toContain('Pets')
 })
 
 test('useStore throws outside the provider', () => {

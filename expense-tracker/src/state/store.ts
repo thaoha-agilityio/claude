@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 import type { StoreData } from '../domain/types'
 import type { Repository } from '../storage/repository'
 
-export type StoreActions = Omit<Repository, 'getData'>
+export type StoreActions = Omit<Repository, 'getData' | 'reload'>
 export type Store = { data: StoreData } & StoreActions
 
 export const StoreContext = createContext<Store | null>(null)
