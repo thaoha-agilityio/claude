@@ -89,6 +89,7 @@ test('edits an expense with the form prefilled', async () => {
   expect(form()).toHaveAccessibleName('Add expense')
   expect(rowText()).toEqual(['01/10/2026 | Food | 35.000 ₫ | pho'])
   expect(stored()[0].amount).toBe(35000)
+  expect(screen.getByRole('button', { name: /^Edit Food/ })).toHaveFocus()
 })
 
 test('cancelling an edit returns to the add form unchanged', async () => {
@@ -101,6 +102,7 @@ test('cancelling an edit returns to the add form unchanged', async () => {
 
   expect(form()).toHaveAccessibleName('Add expense')
   expect(rowText()).toEqual(['01/10/2026 | Food | 30.000 ₫ | '])
+  expect(screen.getByRole('button', { name: /^Edit Food/ })).toHaveFocus()
 })
 
 test('deletes an expense after confirmation, including one being edited', async () => {

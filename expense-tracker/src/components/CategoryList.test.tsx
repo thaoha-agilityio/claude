@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import type { Category } from '../domain/types'
 import { ValidationError } from '../storage/repository'
 import CategoryList from './CategoryList'
@@ -85,4 +86,35 @@ test('refuses to delete an in-use category without opening the dialog', async ()
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   expect(screen.getByRole('alert')).toHaveTextContent('Used by 2 expenses — reassign them first.')
   expect(onDelete).not.toHaveBeenCalled()
+})
+
+test('returns focus to the Rename button after saving or cancelling', async () => {
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'Rename Pets' }))
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('button', { name: 'Rename Pets' })).toHaveFocus()
+
+  await user.click(screen.getByRole('button', { name: 'Rename Pets' }))
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+  expect(screen.getByRole('button', { name: 'Rename Pets' })).toHaveFocus()
+})
+
+test('moves focus into the list after a deleted row disappears', async () => {
+  const user = userEvent.setup()
+  function Harness() {
+    const [items, setItems] = useState(categories)
+    return (
+      <CategoryList
+        categories={items}
+        usage={{}}
+        onRename={vi.fn()}
+        onDelete={(id) => setItems((xs) => xs.filter((c) => c.id !== id))}
+      />
+    )
+  }
+  render(<Harness />)
+  await user.click(screen.getByRole('button', { name: 'Delete Pets' }))
+  await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }))
+  expect(screen.queryByText('Pets')).not.toBeInTheDocument()
+  expect(screen.getByRole('list', { name: 'Categories' }).parentElement).toHaveFocus()
 })

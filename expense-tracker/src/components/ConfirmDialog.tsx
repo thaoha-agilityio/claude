@@ -8,13 +8,23 @@ type Props = {
   confirmLabel?: string
   onConfirm: () => void
   onCancel: () => void
+  /** Focused on close when the element that opened the dialog is gone (e.g. its row was deleted). */
+  fallbackFocus?: () => HTMLElement | null
 }
 
 /**
  * Modal confirmation. Focuses Cancel on open (the safe choice for destructive actions), keeps Tab inside,
- * closes on Escape, and returns focus to the previously focused element when it closes.
+ * closes on Escape, and returns focus to the previously focused element (or `fallbackFocus`) when it closes.
  */
-export default function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', onConfirm, onCancel }: Props) {
+export default function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel = 'Confirm',
+  onConfirm,
+  onCancel,
+  fallbackFocus,
+}: Props) {
   const titleId = useId()
   const messageId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -26,8 +36,9 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'Co
     cancelRef.current?.focus()
     return () => {
       if (previous?.isConnected) previous.focus()
+      else fallbackFocus?.()?.focus()
     }
-  }, [open])
+  }, [open, fallbackFocus])
 
   if (!open) return null
 

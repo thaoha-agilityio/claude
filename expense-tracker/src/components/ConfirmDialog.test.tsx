@@ -67,3 +67,32 @@ test('Tab stays inside the dialog', async () => {
   await user.tab({ shift: true })
   expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus()
 })
+
+test('focuses the fallback when the opener is gone', async () => {
+  const user = userEvent.setup()
+  function Removable() {
+    const [open, setOpen] = useState(false)
+    const [shown, setShown] = useState(true)
+    return (
+      <>
+        <div data-testid="fallback" tabIndex={-1} />
+        {shown && <button onClick={() => setOpen(true)}>remove me</button>}
+        <ConfirmDialog
+          open={open}
+          title="Delete?"
+          message="Gone."
+          onConfirm={() => {
+            setShown(false)
+            setOpen(false)
+          }}
+          onCancel={() => setOpen(false)}
+          fallbackFocus={() => document.querySelector<HTMLElement>('[data-testid="fallback"]')}
+        />
+      </>
+    )
+  }
+  render(<Removable />)
+  await user.click(screen.getByRole('button', { name: 'remove me' }))
+  await user.click(screen.getByRole('button', { name: 'Confirm' }))
+  expect(screen.getByTestId('fallback')).toHaveFocus()
+})

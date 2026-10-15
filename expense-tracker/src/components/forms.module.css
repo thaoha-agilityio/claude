@@ -20,6 +20,12 @@
 .field input,
 .field select,
 .field textarea {
-  font: inherit;
+  width: 100%;
   max-width: 24rem;
+}
+
+/* Wide tables scroll sideways on narrow screens instead of widening the page. */
+.scroll {
+  position: relative; /* contains absolutely positioned children, e.g. visually hidden headers */
+  overflow-x: auto;
 }

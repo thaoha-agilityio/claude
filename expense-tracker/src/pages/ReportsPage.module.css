@@ -1,0 +1,28 @@
+.total {
+  font-size: 1.25rem;
+}
+
+.table {
+  width: 100%;
+  max-width: 40rem;
+  margin-top: 1rem;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.table tfoot th,
+.table tfoot td {
+  border-top: 2px solid #ccc;
+  font-weight: 600;
+}
+
+.num {
+  text-align: right !important;
+  white-space: nowrap;
+}

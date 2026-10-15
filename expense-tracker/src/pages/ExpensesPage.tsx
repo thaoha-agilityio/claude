@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ExpenseForm from '../components/ExpenseForm'
 import ExpenseList from '../components/ExpenseList'
+import { editButtonId } from '../components/ids'
 import MonthPicker from '../components/MonthPicker'
 import { isValidDate, todayInHcm } from '../domain/dates'
 import { formatVnd } from '../domain/money'
@@ -15,6 +16,19 @@ export default function ExpensesPage() {
   const { data, addExpense, updateExpense, deleteExpense } = useStore()
   const [month, setMonth] = useState(() => todayInHcm().slice(0, 7))
   const [editing, setEditing] = useState<Expense | null>(null)
+  // After an edit closes, focus goes back to that row's Edit button.
+  const focusNext = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!focusNext.current) return
+    document.getElementById(focusNext.current)?.focus()
+    focusNext.current = null
+  })
+
+  function stopEditing() {
+    if (editing) focusNext.current = editButtonId(editing.id)
+    setEditing(null)
+  }
 
   // Skips malformed stored dates instead of crashing the page on them.
   const visible = useMemo(
@@ -32,7 +46,7 @@ export default function ExpensesPage() {
   function handleUpdate(input: ExpenseInput) {
     if (!editing) return
     updateExpense(editing.id, input)
-    setEditing(null)
+    stopEditing()
     setMonth(input.date.slice(0, 7))
   }
 
@@ -53,7 +67,7 @@ export default function ExpensesPage() {
             categories={data.categories}
             expense={editing}
             onSubmit={handleUpdate}
-            onCancel={() => setEditing(null)}
+            onCancel={stopEditing}
             autoFocus
           />
         ) : (

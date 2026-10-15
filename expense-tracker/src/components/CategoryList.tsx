@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { Category } from '../domain/types'
 import { CategoryInUseError } from '../storage/repository'
 import ConfirmDialog from './ConfirmDialog'
@@ -21,6 +21,17 @@ export default function CategoryList({ categories, usage, onRename, onDelete }: 
   const [draft, setDraft] = useState('')
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Category | null>(null)
+  const listId = useId()
+  const rootRef = useRef<HTMLDivElement>(null)
+  // Element id to focus after the next render, e.g. the Rename button once its inline form closes.
+  const focusNext = useRef<string | null>(null)
+  const renameButtonId = (id: string) => `${listId}-rename-${id}`
+
+  useEffect(() => {
+    if (!focusNext.current) return
+    document.getElementById(focusNext.current)?.focus()
+    focusNext.current = null
+  })
 
   function startEdit(category: Category) {
     setEditingId(category.id)
@@ -29,6 +40,7 @@ export default function CategoryList({ categories, usage, onRename, onDelete }: 
   }
 
   function cancelEdit() {
+    if (editingId) focusNext.current = renameButtonId(editingId)
     setEditingId(null)
     setRowError(null)
   }
@@ -66,7 +78,7 @@ export default function CategoryList({ categories, usage, onRename, onDelete }: 
   if (categories.length === 0) return <p>No categories yet.</p>
 
   return (
-    <>
+    <div ref={rootRef} tabIndex={-1}>
       <ul className={styles.list} aria-label="Categories">
         {categories.map((category) => (
           <li key={category.id} className={styles.item}>
@@ -84,7 +96,12 @@ export default function CategoryList({ categories, usage, onRename, onDelete }: 
                 <div className={forms.row}>
                   <span className={styles.name}>{category.name}</span>
                   <span className={styles.count}>{plural(usage[category.id] ?? 0)}</span>
-                  <button type="button" onClick={() => startEdit(category)} aria-label={`Rename ${category.name}`}>
+                  <button
+                    type="button"
+                    id={renameButtonId(category.id)}
+                    onClick={() => startEdit(category)}
+                    aria-label={`Rename ${category.name}`}
+                  >
                     Rename
                   </button>
                   <button type="button" onClick={() => requestDelete(category)} aria-label={`Delete ${category.name}`}>
@@ -108,8 +125,9 @@ export default function CategoryList({ categories, usage, onRename, onDelete }: 
         confirmLabel="Delete"
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}
+        fallbackFocus={() => rootRef.current}
       />
-    </>
+    </div>
   )
 }
 
