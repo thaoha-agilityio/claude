@@ -90,10 +90,12 @@ export function createRepository(deps: StorageDeps = {}) {
     return index
   }
 
+  /** Copies only the input fields, so extra properties (e.g. id, createdAt) can't reach storage. */
   function checkExpense(input: ExpenseInput): ExpenseInput {
     const errors = validateExpense(input, data.categories)
     if (!isValid(errors)) throw new ValidationError<ExpenseField>(errors)
-    return { ...input, notes: input.notes.trim() }
+    const { amount, date, categoryId, notes } = input
+    return { amount, date, categoryId, notes: notes.trim() }
   }
 
   function checkCategoryName(name: string, ignoreId?: string): string {
