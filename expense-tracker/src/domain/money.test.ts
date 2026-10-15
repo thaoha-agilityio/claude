@@ -1,4 +1,4 @@
-import { formatVnd, parseVnd } from './money'
+import { MAX_INPUT_DIGITS, formatVnd, formatVndInput, parseVnd } from './money'
 
 describe('parseVnd', () => {
   it.each([
@@ -47,5 +47,29 @@ describe('formatVnd', () => {
   it('round-trips with parseVnd', () => {
     const shown = formatVnd(1250000).replace(/\s₫$/, '')
     expect(parseVnd(shown)).toBe(1250000)
+  })
+})
+
+describe('formatVndInput', () => {
+  it.each([
+    ['', ''],
+    ['5', '5'],
+    ['1234', '1.234'],
+    ['1250000', '1.250.000'],
+    ['1.250.000 ₫', '1.250.000'],
+    ['12.34', '1.234'],
+    ['-50,000đ', '50.000'],
+    ['007', '7'],
+    ['0', '0'],
+    ['000', '0'],
+    ['abc', ''],
+  ])('%j → %j', (input, expected) => {
+    expect(formatVndInput(input)).toBe(expected)
+  })
+
+  it('caps the number of digits', () => {
+    const out = formatVndInput('9'.repeat(MAX_INPUT_DIGITS + 3))
+    expect(out.replaceAll('.', '')).toHaveLength(MAX_INPUT_DIGITS)
+    expect(parseVnd(out)).not.toBeNull()
   })
 })

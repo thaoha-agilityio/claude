@@ -10,3 +10,16 @@
   color: #b00020;
   font-size: 0.9rem;
 }
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  font: inherit;
+  max-width: 24rem;
+}

@@ -24,3 +24,15 @@ export function parseVnd(input: string): number | null {
 export function formatVnd(amount: number): string {
   return vndFormatter.format(amount)
 }
+
+/** Most digits AmountInput keeps; 15 digits always stays a safe integer, and range errors come from validation. */
+export const MAX_INPUT_DIGITS = 15
+
+/**
+ * Normalises amount text while typing: keeps digits only, drops leading zeros, caps the length,
+ * and regroups with '.', e.g. "1250000" → "1.250.000", "1.250.000 ₫" → "1.250.000". Output always parses with parseVnd.
+ */
+export function formatVndInput(text: string): string {
+  const digits = text.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, MAX_INPUT_DIGITS)
+  return digits.replace(/\B(?=(\d{3})+$)/g, '.')
+}
