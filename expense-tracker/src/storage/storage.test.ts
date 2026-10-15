@@ -81,8 +81,39 @@ describe('loadData / saveData', () => {
     expect(data.expenses).toEqual([])
     const backupKey = `${STORAGE_KEY}:corrupt:${NOW.toISOString()}`
     expect(localStorage.getItem(backupKey)).toBe(text)
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(text) // untouched until the next save
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual(data)
     expect(warn).toHaveBeenCalledWith(expect.stringContaining(backupKey))
+    warn.mockRestore()
+  })
+
+  it('backs up unreadable data only once across reloads (issue #3 repro)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    localStorage.setItem(STORAGE_KEY, 'not json')
+
+    const first = loadData(deps)
+    for (let i = 1; i <= 2; i++) {
+      const later = { ...deps, now: () => new Date(NOW.getTime() + i * 60_000) }
+      expect(loadData(later)).toEqual(first)
+    }
+
+    expect(Object.keys(localStorage).filter((k) => k.includes(':corrupt:'))).toHaveLength(1)
+    expect(warn).toHaveBeenCalledTimes(1)
+    warn.mockRestore()
+  })
+
+  it('leaves unreadable data in place when the backup fails', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    localStorage.setItem(STORAGE_KEY, 'not json')
+    const noWrites = {
+      getItem: (k: string) => localStorage.getItem(k),
+      setItem: () => {
+        throw new DOMException('full', 'QuotaExceededError')
+      },
+    } as unknown as Storage
+
+    expect(loadData({ ...deps, storage: noWrites }).expenses).toEqual([])
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('not json')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('backup failed'))
     warn.mockRestore()
   })
 
