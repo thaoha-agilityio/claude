@@ -4,17 +4,45 @@
   box-sizing: border-box;
 }
 
+/* Light blue theme. Text colours meet WCAG AA (4.5:1) on both --color-surface and --color-bg. */
 :root {
+  --color-bg: #eef7fd;
+  --color-surface: #fff;
+  --color-surface-tint: #f5fbff;
+  --color-header: #dff1fc;
+  --color-border: #cde4f3;
+  --color-border-strong: #6b97b8; /* 3:1 on surface, for input and button outlines */
+  --color-text: #0f2a3d;
+  --color-text-muted: #4a6478;
+  --color-primary: #0369a1;
+  --color-primary-hover: #075985;
+  --color-primary-soft: #e0f2fe;
+  --color-on-primary: #fff;
+  --color-danger: #b42318;
+  --color-danger-hover: #912018;
+  --color-focus: #0284c7; /* 3:1 on surface, bg and header */
+  --radius: 8px;
+  --shadow: 0 1px 2px rgb(15 42 61 / 6%), 0 4px 16px rgb(15 42 61 / 6%);
+
   color-scheme: light;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
-  color: #222;
-  background: #fff;
+  color: var(--color-text);
+  background: var(--color-bg);
 }
 
 body {
   margin: 0;
-  background: #fff;
+  background: var(--color-bg);
+}
+
+h2 {
+  margin-top: 0;
+  color: var(--color-primary-hover);
+}
+
+h3 {
+  color: var(--color-text);
 }
 
 button,
@@ -22,19 +50,71 @@ input,
 select,
 textarea {
   font: inherit;
+  color: inherit;
 }
 
+input,
+select,
+textarea {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+input[aria-invalid='true'],
+select[aria-invalid='true'],
+textarea[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+/* Secondary by default; submit buttons are the primary action. */
 button {
   min-height: 2.25rem;
-  padding: 0.25rem 0.75rem;
+  padding: 0.25rem 0.85rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-primary-hover);
   cursor: pointer;
 }
 
+button:hover {
+  background: var(--color-primary-soft);
+}
+
+button[type='submit'] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+}
+
+button[type='submit']:hover {
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
+}
+
 :focus-visible {
-  outline: 2px solid #1a73e8;
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 
 [tabindex='-1']:focus {
   outline: none;
+}
+
+input[type='month'] {
+  width: 10.5rem;
+}
+
+@media (max-width: 40rem) {
+  table {
+    font-size: 0.9rem;
+  }
+
+  th,
+  td {
+    padding-inline: 0.4rem !important;
+  }
 }

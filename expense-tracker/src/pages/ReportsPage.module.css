@@ -1,4 +1,9 @@
 .total {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
   font-size: 1.25rem;
 }
 
@@ -11,14 +16,20 @@
 
 .table th,
 .table td {
-  padding: 0.5rem;
-  border-bottom: 1px solid #eee;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
   text-align: left;
+}
+
+.table thead th {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
+  font-size: 0.9rem;
 }
 
 .table tfoot th,
 .table tfoot td {
-  border-top: 2px solid #ccc;
+  border-top: 2px solid var(--color-border-strong);
   font-weight: 600;
 }
 
