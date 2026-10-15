@@ -54,6 +54,30 @@ describe('expenses', () => {
     expect(stored().expenses).toEqual([updated])
   })
 
+  it('ignores extra fields when adding, so duplicating an expense gets a new id', () => {
+    const { repo, input } = setup()
+    const original = repo.addExpense(input())
+    clock = new Date('2026-10-15T00:00:00.000Z')
+
+    const copy = repo.addExpense({ ...original })
+
+    expect(copy.id).not.toBe(original.id)
+    expect(copy.createdAt).toBe(clock.toISOString())
+    expect(stored().expenses).toEqual([original, copy])
+  })
+
+  it('ignores extra fields when updating, keeping createdAt and dropping unknown keys', () => {
+    const { repo, input } = setup()
+    const original = repo.addExpense(input())
+    clock = new Date('2026-10-15T00:00:00.000Z')
+
+    const tampered = { ...original, amount: 75000, id: 'other', createdAt: '2000-01-01T00:00:00.000Z', extra: 1 }
+    const updated = repo.updateExpense(original.id, tampered)
+
+    expect(updated).toEqual({ ...original, amount: 75000, updatedAt: clock.toISOString() })
+    expect(stored().expenses).toEqual([updated])
+  })
+
   it('deletes an expense', () => {
     const { repo, input } = setup()
     const a = repo.addExpense(input())
