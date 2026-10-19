@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ValidationError } from '../storage/repository'
 import CategoryForm from './CategoryForm'
@@ -13,6 +13,27 @@ test('submits the name and clears the input', async () => {
   await user.type(input, 'Pets{Enter}')
   expect(onAdd).toHaveBeenCalledWith('Pets')
   expect(input).toHaveValue('')
+})
+
+test('disables the form while saving, so it cannot submit twice or lose typed text', async () => {
+  const user = userEvent.setup()
+  let finishSave = () => {}
+  const onAdd = vi.fn(() => new Promise<void>((resolve) => (finishSave = resolve)))
+  render(<CategoryForm onAdd={onAdd} />)
+
+  const input = screen.getByLabelText('New category')
+  await user.type(input, 'Pets{Enter}')
+  await user.type(input, '{Enter}Toys')
+
+  expect(onAdd).toHaveBeenCalledTimes(1)
+  expect(input).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled()
+  expect(input).toHaveValue('Pets')
+
+  await act(async () => finishSave())
+  expect(input).toBeEnabled()
+  expect(input).toHaveValue('')
+  expect(input).toHaveFocus()
 })
 
 test('shows a validation error and keeps the input', async () => {
