@@ -5,3 +5,4 @@ playwright-report
 test-results
 CLAUDE.local.md
 .claude/settings.local.json
+/data

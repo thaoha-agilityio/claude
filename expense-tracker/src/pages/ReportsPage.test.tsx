@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { StoreProvider } from '../state/StoreContext'
 import { createRepository } from '../storage/repository'
 import { STORAGE_KEY } from '../storage/storage'
+import { localStore } from '../test/store'
 import ReportsPage from './ReportsPage'
 
 beforeEach(() => {
@@ -27,7 +28,7 @@ function seed() {
 
 function renderPage() {
   render(
-    <StoreProvider>
+    <StoreProvider {...localStore()}>
       <ReportsPage />
     </StoreProvider>,
   )

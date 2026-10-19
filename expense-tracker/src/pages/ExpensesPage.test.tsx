@@ -4,6 +4,7 @@ import type { Expense } from '../domain/types'
 import { StoreProvider } from '../state/StoreContext'
 import { createRepository } from '../storage/repository'
 import { STORAGE_KEY } from '../storage/storage'
+import { localStore } from '../test/store'
 import ExpensesPage from './ExpensesPage'
 
 // 00:30 on 15 Oct 2026 in Ho Chi Minh City, still 14 Oct in UTC.
@@ -23,7 +24,7 @@ function renderPage(seed: (repo: ReturnType<typeof createRepository>, food: stri
   const id = (name: string) => repo.getData().categories.find((c) => c.name === name)!.id
   seed(repo, id('Food'), id('Transport'))
   render(
-    <StoreProvider>
+    <StoreProvider {...localStore()}>
       <ExpensesPage />
     </StoreProvider>,
   )
@@ -128,7 +129,7 @@ test('ignores stored expenses with malformed dates instead of crashing', () => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(raw))
 
   render(
-    <StoreProvider>
+    <StoreProvider {...localStore()}>
       <ExpensesPage />
     </StoreProvider>,
   )

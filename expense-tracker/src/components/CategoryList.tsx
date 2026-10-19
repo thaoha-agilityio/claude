@@ -10,8 +10,8 @@ type Props = {
   categories: readonly Category[]
   /** Expense count per category id; missing means 0. */
   usage: Readonly<Record<string, number>>
-  onRename: (id: string, name: string) => void
-  onDelete: (id: string) => void
+  onRename: (id: string, name: string) => void | Promise<unknown>
+  onDelete: (id: string) => void | Promise<void>
 }
 
 const plural = (n: number) => `${n} ${n === 1 ? 'expense' : 'expenses'}`
@@ -45,9 +45,9 @@ export default function CategoryList({ categories, usage, onRename, onDelete }: 
     setRowError(null)
   }
 
-  function saveEdit(id: string) {
+  async function saveEdit(id: string) {
     try {
-      onRename(id, draft)
+      await onRename(id, draft)
       cancelEdit()
     } catch (err) {
       setRowError({ id, message: errorMessage(err, 'name') })
@@ -64,12 +64,12 @@ export default function CategoryList({ categories, usage, onRename, onDelete }: 
     }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
     const { id } = pendingDelete
     setPendingDelete(null)
     try {
-      onDelete(id)
+      await onDelete(id)
     } catch (err) {
       setRowError({ id, message: err instanceof CategoryInUseError ? err.message : errorMessage(err) })
     }
