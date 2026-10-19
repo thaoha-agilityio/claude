@@ -25,11 +25,13 @@ Requires Node.js and npm.
 
 ```bash
 npm install
-npm run server    # API on http://localhost:3001/api, data in ./data
+npm run server    # API on http://127.0.0.1:3001/api, data in ./data
 npm run dev       # http://localhost:5173, forwards /api to the server
 ```
 
-Set `PORT` and `DATA_DIR` to change where the server listens and saves; set `API_URL` for `npm run dev` / `npm run preview` if the server runs elsewhere.
+Set `PORT` and `DATA_DIR` to change where the server listens and saves. The API has no login, so it
+only accepts connections from this machine; set `HOST` (e.g. `HOST=0.0.0.0`) only if you really want
+it reachable from the network. Set `API_URL` for `npm run dev` / `npm run preview` if the server runs elsewhere.
 
 ## API
 
