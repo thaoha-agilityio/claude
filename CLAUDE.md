@@ -5,8 +5,9 @@ preferences go in `CLAUDE.local.md` or `~/.claude/CLAUDE.md`, not here.
 
 ## Layout
 
-The git root is this directory; the only app is `expense-tracker/`, a client-side React + TypeScript
-expense tracker with no backend (data lives in `localStorage`). Run all npm commands from
+The git root is this directory; the only app is `expense-tracker/`, a React + TypeScript expense
+tracker with a small Node REST server that saves to JSON files (`npm run server`, then `npm run dev`).
+Run all npm commands from
 `expense-tracker/`. Read `expense-tracker/README.md` for features and scripts, and
 `expense-tracker/SPEC.md` for MVP scope (budgeting, Excel export and sharing are out of scope).
 
@@ -15,10 +16,12 @@ expense tracker with no backend (data lives in `localStorage`). Run all npm comm
 .gitlab/                   MR template (default.md)
 expense-tracker/
   src/domain/              pure logic: types, money, dates, validation, reports — no React, no storage
-  src/storage/             localStorage persistence (storage.ts) and CRUD + errors (repository.ts)
-  src/state/               StoreProvider and useStore()
+  src/storage/             persistence (storage.ts) and CRUD + errors (repository.ts), run by the server
+  src/api/                 Api interface: HTTP client (http.ts) and in-process adapter for tests (api.ts)
+  src/state/               StoreProvider (loads and saves through the Api) and useStore()
   src/components/, pages/  UI; CSS modules next to the component
-  e2e/                     Playwright specs and fixtures
+  server/                  REST API (app.ts) over the repository, with file-backed Storage
+  e2e/                     Playwright specs and fixtures; they start their own API server
 ```
 
 ## Checks
@@ -52,10 +55,13 @@ Do not change code or tests just to make a failing check pass without understand
   version bump and a new `case` in `migrate()` in `storage/storage.ts`; never silently change v1.
   Unreadable data is backed up to `expense-tracker:v1:corrupt:<timestamp>` before being reset — keep
   that guarantee.
-- **Repository** (`storage/repository.ts`) is the only writer. It copies only known input fields (so
-  stray properties can't be persisted), reloads before each change if another tab has saved, and throws
-  `ValidationError` / `NotFoundError` / `CategoryInUseError`. UI turns errors into messages with
-  `errorMessage()` in `components/errors.ts`.
+- **Repository** (`storage/repository.ts`) is the only writer; the server runs it over `FileStorage`, so
+  validation and migration rules are shared. It copies only known input fields (so stray properties can't
+  be persisted) and throws `ValidationError` / `NotFoundError` / `CategoryInUseError`. The HTTP client
+  (`api/http.ts`) rebuilds those errors from API responses, and the UI turns them into messages with
+  `errorMessage()` in `components/errors.ts`. The server checks body types before the repository runs.
+- **UI saves are async.** Store actions return promises; forms await them and disable their fields while
+  saving. Component and page tests use `localStore()` from `src/test/store.ts` instead of a server.
 - Code that needs a clock, id generator or storage takes them as injectable deps (`StorageDeps`,
   `todayInHcm(now)`) so tests can pin them. Follow that pattern rather than mocking globals.
 

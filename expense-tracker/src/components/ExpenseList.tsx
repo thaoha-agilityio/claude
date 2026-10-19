@@ -14,8 +14,8 @@ type Props = {
   expenses: readonly Expense[]
   categories: readonly Category[]
   onEdit: (expense: Expense) => void
-  /** May throw (e.g. storage full); the message is shown above the table. */
-  onDelete: (id: string) => void
+  /** May throw or reject (e.g. the server is unreachable); the message is shown above the table. */
+  onDelete: (id: string) => void | Promise<void>
   emptyMessage?: string
 }
 
@@ -27,12 +27,12 @@ export default function ExpenseList({ expenses, categories, onEdit, onDelete, em
   const categoryName = (id: string) => categories.find((c) => c.id === id)?.name ?? UNKNOWN_CATEGORY_NAME
   const describe = (e: Expense) => `${categoryName(e.categoryId)} ${formatVnd(e.amount)} on ${formatDate(e.date)}`
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) return
     const { id } = pendingDelete
     setPendingDelete(null)
     try {
-      onDelete(id)
+      await onDelete(id)
       setError(null)
     } catch (err) {
       setError(errorMessage(err))

@@ -1,10 +1,13 @@
 import { test as base, expect, type Locator, type Page } from '@playwright/test'
+import { API_PORT } from '../playwright.config'
 
-/** 10:00 on 15 Oct 2026 in Ho Chi Minh City; every test starts with this clock and empty storage. */
+/** 10:00 on 15 Oct 2026 in Ho Chi Minh City; every test starts with this clock and freshly seeded data. */
 export const NOW = new Date('2026-10-15T10:00:00+07:00')
 
 export const test = base.extend({
   page: async ({ page }, use) => {
+    const reset = await page.request.post(`http://localhost:${API_PORT}/api/__reset`)
+    expect(reset.status()).toBe(204)
     await page.clock.setFixedTime(NOW)
     await use(page)
   },

@@ -37,20 +37,20 @@ export default function ExpensesPage() {
   const total = visible.reduce((sum, e) => sum + e.amount, 0)
 
   // Show the month the saved expense is in, so it never seems to disappear.
-  function handleAdd(input: ExpenseInput) {
-    addExpense(input)
+  async function handleAdd(input: ExpenseInput) {
+    await addExpense(input)
     setMonth(input.date.slice(0, 7))
   }
 
-  function handleUpdate(input: ExpenseInput) {
+  async function handleUpdate(input: ExpenseInput) {
     if (!editing) return
-    updateExpense(editing.id, input)
+    await updateExpense(editing.id, input)
     stopEditing()
     setMonth(input.date.slice(0, 7))
   }
 
-  function handleDelete(id: string) {
-    deleteExpense(id)
+  async function handleDelete(id: string) {
+    await deleteExpense(id)
     if (editing?.id === id) setEditing(null)
   }
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Category, Expense } from '../domain/types'
 import { ValidationError } from '../storage/repository'
@@ -63,6 +63,25 @@ test('submits parsed input, then clears amount and notes but keeps date and cate
   expect(notes()).toHaveValue('')
   expect(category()).toHaveValue('food')
   expect(date()).toHaveValue('2026-10-15')
+  expect(amount()).toHaveFocus()
+})
+
+test('disables the fields while saving, so nothing typed meanwhile is lost', async () => {
+  let finishSave = () => {}
+  const onSubmit = vi.fn(() => new Promise<void>((resolve) => (finishSave = resolve)))
+  const { user } = renderForm({ onSubmit })
+  await user.type(amount(), '50000')
+  await user.selectOptions(category(), 'Food')
+  await user.click(screen.getByRole('button', { name: 'Add expense' }))
+
+  expect(onSubmit).toHaveBeenCalledTimes(1)
+  for (const field of [amount(), date(), category(), notes(), screen.getByRole('button', { name: 'Add expense' })]) {
+    expect(field).toBeDisabled()
+  }
+
+  await act(async () => finishSave())
+  expect(amount()).toBeEnabled()
+  expect(amount()).toHaveValue('')
   expect(amount()).toHaveFocus()
 })
 

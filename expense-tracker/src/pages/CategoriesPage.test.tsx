@@ -3,12 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { StoreProvider } from '../state/StoreContext'
 import { createRepository } from '../storage/repository'
 import { STORAGE_KEY } from '../storage/storage'
+import { localStore } from '../test/store'
 import CategoriesPage from './CategoriesPage'
 
 function renderPage() {
   const repository = createRepository()
   render(
-    <StoreProvider repository={repository}>
+    <StoreProvider {...localStore(repository)}>
       <CategoriesPage />
     </StoreProvider>,
   )
