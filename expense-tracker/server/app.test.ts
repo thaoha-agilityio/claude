@@ -177,6 +177,20 @@ describe('requests the API cannot handle', () => {
     expect(res.headers.get('allow')).toBe('POST')
   })
 
+  it('returns 415 for a body not sent as JSON, so other sites cannot post without a preflight', async () => {
+    const before = stored()
+    for (const type of ['text/plain', 'application/x-www-form-urlencoded']) {
+      const res = await fetch(base + '/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': type },
+        body: JSON.stringify({ name: 'Hacked' }),
+      })
+      expect(res.status).toBe(415)
+      expect((await res.json()).error).toBe('unsupported_media_type')
+    }
+    expect(stored()).toEqual(before)
+  })
+
   it('returns 413 for an oversized body', async () => {
     const res = await api('/api/categories', 'POST', { name: 'x'.repeat(MAX_BODY_BYTES) })
     expect(res.status).toBe(413)
