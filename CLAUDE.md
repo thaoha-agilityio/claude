@@ -89,6 +89,10 @@ Hosted on GitLab (`gitlab.asoft-python.com`, project `thao.ha/claude`).
 - One logical change per commit; don't commit `dist/`, `node_modules/`, reports or `.env` files.
 - Claude may stage and commit but not push, reset or rebase (see `.claude/settings.json`); a person
   pushes the branch. Don't amend or force-push shared branches.
+- The PreToolUse hook `.claude/hooks/block-forbidden-command.mjs` enforces this for every Bash call, even
+  inside `cd x && …` or `bash -c "…"`: it refuses push, reset, rebase, `--amend`, `--no-verify`,
+  force-moving branches, commits on `feat/practice` or `main`, and `rm -rf` on `/`, `~`, `.`, `..` or
+  `.git`. Change its rules and tests together; run them with `node --test .claude/hooks/*.test.mjs`.
 - Fill in `.gitlab/merge_request_templates/default.md` for every MR, keeping all its sections. Tick
   only checkboxes that are actually true (e.g. "Unit tests pass" only after running `npm test`); write
   "N/A" for sections that don't apply instead of deleting them.
