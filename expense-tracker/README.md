@@ -49,6 +49,21 @@ All bodies are JSON. Errors are `{ error, message }`, plus `errors` (field → m
 
 Expense bodies are `{ amount, date, categoryId, notes? }`; category bodies are `{ name }`. Malformed JSON is 400, a body over 64 KB is 413.
 
+## MCP server
+
+`mcp/` is an [MCP](https://modelcontextprotocol.io) server that lets Claude (or any MCP client) read and change the
+expense data through the API. It has tools to list categories, list a month's expenses, report a month by category,
+add / update / delete expenses, and add / rename / delete categories (categories can be named instead of using ids).
+
+The repo's `.mcp.json` registers it for Claude Code, so it is available when Claude is started from the repo root;
+approve it once when Claude asks. The API must be running (`npm run server`); set `EXPENSE_API_URL` if it is not on
+`http://127.0.0.1:3001/api`. To run it by hand: `npm run mcp` (it speaks MCP over stdin/stdout).
+
+To try the tools in a browser, run the API (`npm run server`) and then `npm run mcp:inspect`. It starts the
+[MCP Inspector](https://github.com/modelcontextprotocol/inspector), opens it, and connects it to this server: pick a
+tool under **Tools**, fill in its fields and click **Execute Tool**; the **Protocol** panel shows every MCP message.
+The Inspector keeps settings in memory only (`MCP_INSPECTOR_SECRET_STORE=memory`).
+
 ## Testing
 
 ```bash
@@ -72,6 +87,8 @@ Use `npx playwright test --ui` to debug, and `npx playwright show-report` after 
 | `npm run build`      | Type-check and build to `dist/`    |
 | `npm run preview`    | Serve the production build         |
 | `npm run server`     | Start the API server               |
+| `npm run mcp`        | Start the MCP server (stdio)       |
+| `npm run mcp:inspect`| Open the MCP server in the Inspector |
 | `npm test`           | Run unit/component tests (Vitest)  |
 | `npm run test:watch` | Run tests in watch mode            |
 | `npm run test:e2e`   | Run end-to-end tests (Playwright)  |
@@ -91,6 +108,7 @@ src/
   test/        Vitest setup
   App.tsx      router and providers
 server/        REST API (node:http) and file-backed storage
+mcp/           MCP server: expense tools over the REST API
 e2e/           Playwright specs
 ```
 

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "expense-tracker": {
+      "type": "stdio",
+      "command": "npm",
+      "args": ["--prefix", "expense-tracker", "run", "--silent", "mcp"],
+      "env": {
+        "EXPENSE_API_URL": "${EXPENSE_API_URL:-http://127.0.0.1:3001/api}"
+      }
+    }
+  }
+}
