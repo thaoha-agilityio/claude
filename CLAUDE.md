@@ -14,6 +14,7 @@ Run all npm commands from
 ```
 .claude/                   shared Claude Code settings and the git-committer agent
 .gitlab/                   MR template (default.md)
+.mcp.json                  registers the expense-tracker MCP server for Claude Code
 expense-tracker/
   src/domain/              pure logic: types, money, dates, validation, reports — no React, no storage
   src/storage/             persistence (storage.ts) and CRUD + errors (repository.ts), run by the server
@@ -21,6 +22,7 @@ expense-tracker/
   src/state/               StoreProvider (loads and saves through the Api) and useStore()
   src/components/, pages/  UI; CSS modules next to the component
   server/                  REST API (app.ts) over the repository, with file-backed Storage
+  mcp/                     MCP server (server.ts): expense tools that call the REST API
   e2e/                     Playwright specs and fixtures; they start their own API server
 ```
 

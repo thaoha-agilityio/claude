@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "server": "tsx server/main.ts",
+    "mcp": "tsx mcp/main.ts",
+    "mcp:inspect": "MCP_INSPECTOR_SECRET_STORE=memory mcp-inspector --web -e EXPENSE_API_URL=${EXPENSE_API_URL:-http://127.0.0.1:3001/api} tsx mcp/main.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -21,6 +23,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/inspector": "^2.11.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@playwright/test": "^1.64.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
@@ -39,6 +43,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "zod": "^4.6.7"
   }
 }
