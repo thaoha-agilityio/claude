@@ -1,0 +1,60 @@
+# Checks from CLAUDE.md, run on pull requests and on pushes to feat/practice and main.
+# No deploy: the API has no auth and keeps its data on disk (see .claude/skills/deploy-setup/SKILL.md).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [feat/practice, main]
+
+permissions:
+  contents: read
+
+# A new push to the same PR or branch cancels the run that's still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: expense-tracker
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: expense-tracker/package-lock.json
+      - run: npm ci
+      # Vitest adds GitHub annotations by itself when GITHUB_ACTIONS is set.
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      # The PreToolUse hook that blocks push/reset/rebase for Claude.
+      - run: node --test .claude/hooks/*.test.mjs
+        working-directory: .
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: expense-tracker/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # CI is set, so playwright.config.ts uses the `github` reporter, 2 retries and fresh servers.
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-test-results
+          path: expense-tracker/test-results/
+          retention-days: 7
