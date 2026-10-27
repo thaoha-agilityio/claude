@@ -12,7 +12,15 @@ export const MAX_BODY_BYTES = 64 * 1024
 
 /** Error payload for every non-2xx response. `errors` is set for validation failures, `count` for an in-use category. */
 export type ApiError = {
-  error: 'bad_request' | 'validation' | 'not_found' | 'method_not_allowed' | 'category_in_use' | 'too_large' | 'server'
+  error:
+    | 'bad_request'
+    | 'validation'
+    | 'not_found'
+    | 'method_not_allowed'
+    | 'category_in_use'
+    | 'too_large'
+    | 'unsupported_media_type'
+    | 'server'
   message: string
   errors?: ValidationErrors<string>
   count?: number
@@ -40,6 +48,11 @@ function respond(status: number, body?: unknown, headers: Record<string, string>
 
 /** Reads the body as a stream so an oversized one is rejected without buffering all of it. */
 async function readJson(req: Request): Promise<unknown> {
+  // Only a JSON content type makes a cross-site request need a preflight, which this API never answers, so
+  // another website open in the user's browser can't post data here as text/plain or a form.
+  if (!/^application\/json\b/i.test(req.headers.get('content-type') ?? '')) {
+    throw new HttpError(415, { error: 'unsupported_media_type', message: 'Send the body as application/json' })
+  }
   const chunks: Uint8Array[] = []
   let size = 0
   const reader = req.body?.getReader()
@@ -105,7 +118,8 @@ type Route = { pattern: RegExp; methods: Record<string, Handler> }
  *   PATCH  /api/categories/:id    → 200 Category      body { name }
  *   DELETE /api/categories/:id    → 204, or 409 while expenses still use it
  *
- * Errors are JSON `ApiError`s: 400 bad JSON or validation, 404 unknown id or route, 405, 409, 413, 500.
+ * Errors are JSON `ApiError`s: 400 bad JSON or validation, 404 unknown id or route, 405, 409, 413, 415 body not
+ * sent as application/json, 500.
  * Uses only the web-standard Request/Response (no `node:` imports), so the same handler runs in Node (createApp in
  * app.ts) and in the Cloudflare Worker (worker/index.ts).
  */

@@ -1,7 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Category, Expense } from '../domain/types'
-import { SAVE_FAILED } from './errors'
+import { NotFoundError } from '../storage/repository'
+import { NOT_FOUND, SAVE_FAILED } from './errors'
 import ExpenseList from './ExpenseList'
 
 const categories: Category[] = [{ id: 'food', name: 'Food', createdAt: '2026-01-01T00:00:00.000Z' }]
@@ -74,4 +75,11 @@ test('shows an error when delete fails', async () => {
   await user.click(screen.getByRole('button', { name: /^Delete Food/ }))
   await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }))
   expect(screen.getByRole('alert')).toHaveTextContent(SAVE_FAILED)
+})
+
+test('says the expense is gone, not that the connection failed, when it was already deleted elsewhere', async () => {
+  const { user } = setup({ onDelete: () => Promise.reject(new NotFoundError('Expense', 'e1')) })
+  await user.click(screen.getByRole('button', { name: /^Delete Food/ }))
+  await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(NOT_FOUND)
 })
