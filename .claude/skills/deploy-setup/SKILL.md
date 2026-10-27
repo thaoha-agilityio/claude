@@ -1,11 +1,13 @@
 ---
 name: deploy-setup
-description: Sets up the GitLab CI pipeline for this repo (.gitlab-ci.yml on gitlab.asoft-python.com, project thao.ha/claude). It runs the checks CLAUDE.md requires (unit tests, typecheck, lint, hook tests, build, Playwright e2e), with test reports and failure artifacts, on merge requests and on feat/practice and main. It commits on a chore branch and hands the push to the user. Deploying the app is deliberately out of scope until the API has auth and a home for its data. Use when someone asks to set up CI/CD, add a pipeline, run the tests in CI, or "deploy" this expense tracker. Not web-dev:deploy-setup, which targets GitHub Actions and Cloudflare for boilerplate projects.
+description: Sets up CI for this repo on GitHub Actions (github.com/thaoha-agilityio/claude, the `github` remote). It adds .github/workflows/ci.yml, which runs the checks CLAUDE.md requires (unit tests, typecheck, lint, build, hook tests, Playwright e2e) on pull requests and on pushes to feat/practice and main. It commits on a chore branch and hands the push to the user. Deploying the app is deliberately out of scope until the API has auth and a home for its data. Use when someone asks to set up CI/CD, add a pipeline or workflow, run the tests in CI, or "deploy" this expense tracker. Not web-dev:deploy-setup, which targets Cloudflare for boilerplate projects.
 ---
 
 # deploy-setup
 
-Set up CI for this repo, and say plainly why there is no deploy yet. Work through the sections in order. Every item ends up ✅, ❌ or N/A with a reason. Run npm commands from `expense-tracker/` and git commands from the repo root. Follow `CLAUDE.md` for branches, commits and MRs.
+Set up CI for this repo on GitHub Actions, and say plainly why there is no deploy yet. Work through the sections in order. Every item ends up ✅, ❌ or N/A with a reason. Run npm commands from `expense-tracker/` and git commands from the repo root. Follow `CLAUDE.md` for commits and PR descriptions.
+
+CI runs on GitHub only. The repo has two remotes: `origin` (GitLab) and `github` (`thaoha-agilityio/claude`). Their `feat/practice` branches can differ, so branch off **`github/feat/practice`** and open the PR there. No GitLab pipeline is wanted.
 
 ## Why CI only
 
@@ -15,66 +17,51 @@ The app is a Vite SPA plus a Node REST server (`server/`) that saves everything 
 - **Persistent storage:** the data must live on a disk that survives restarts and redeploys.
 - **Something to serve `dist/`:** the server serves only `/api`, and `vite preview` is not a production server.
 
-So the pipeline proves every change passes the checks, and stops there. If the user asks for a deploy anyway, list these three gaps and stop. Picking a host and an auth scheme is their decision, and it belongs in its own MR.
+So the workflow proves every change passes the checks, and stops there. If the user asks for a deploy anyway, list these three gaps and stop. Picking a host and an auth scheme is their decision, and it belongs in its own PR.
 
 ## 1. Preconditions
 
 - [ ] The working tree is clean, or only has changes the user asked for. Don't stash or discard anything.
-- [ ] `git fetch origin`, then branch off the integration branch: `git switch -c chore/gitlab-ci origin/feat/practice`. The PreToolUse hook refuses commits on `feat/practice` and `main`.
-- [ ] No `.gitlab-ci.yml` exists yet. If one does, read it and change only what this skill covers. Keep any jobs the user added.
-- [ ] Ask the user whether the project has a GitLab runner with the Docker executor, and whether jobs need runner `tags`. Self-hosted GitLab often has neither by default. With no runner, the pipeline sits in "pending" forever. Record the answer. Continue either way, because the file is still worth committing.
+- [ ] `git fetch github`, then `git switch -c chore/github-ci github/feat/practice`. The PreToolUse hook refuses commits on `feat/practice` and `main`.
+- [ ] List `.github/workflows/`. The Claude workflows (`claude.yml`, `claude-code-review.yml`) stay as they are. If a CI workflow already exists, read it and change only what this skill covers.
 
-## 2. Make the e2e output readable in GitLab
+## 2. Write `.github/workflows/ci.yml`
 
-`expense-tracker/playwright.config.ts` picks `reporter: process.env.CI ? 'github' : 'list'`. GitLab sets `CI=true` too, so in GitLab the `github` reporter prints annotations nothing renders, and there is no HTML report to download.
+Copy [ci.template.yml](ci.template.yml) from this folder to `.github/workflows/ci.yml`. Then check each point against the repo as it is now:
 
-- [ ] Change the CI branch of that ternary to `[['list'], ['junit', { outputFile: 'test-results/junit.xml' }], ['html', { open: 'never' }]]`. Leave the local `'list'` as it is.
-- [ ] Keep the rest of the CI behaviour as it is: `forbidOnly`, `retries: 2`, `reuseExistingServer: false`.
-- [ ] `playwright-report/` and `test-results/` are already in `expense-tracker/.gitignore`. Confirm they still are, and never commit reports.
+- [ ] **Node version:** the version satisfies Vite's and Vitest's `engines` in `package-lock.json`. The template uses 24.
+- [ ] **Jobs match the Checks section of `CLAUDE.md`:** `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test:e2e` and `node --test .claude/hooks/*.test.mjs`. If CLAUDE.md lists a check that has no step, add the step.
+- [ ] **E2E keeps the existing config.** `playwright.config.ts` already switches on `CI`: the `github` reporter (annotations on the PR), `forbidOnly`, 2 retries, and fresh servers instead of reused ones. GitHub sets `CI=true`, so don't change the config. Only Chromium is installed (`npx playwright install --with-deps chromium`), because the config has a single Chromium project.
+- [ ] **Failure artifacts:** on failure the e2e job uploads `expense-tracker/test-results/`, which holds the traces from retried tests, kept 7 days. Reports are never committed.
+- [ ] **No `continue-on-error`, no `|| true`, no skipped tests.** A red check must fail the run.
+- [ ] **Least privilege:** `permissions: contents: read`, no secrets. Nothing here needs credentials.
+- [ ] **Triggers:** `pull_request`, plus `push` to `feat/practice` and `main`. `concurrency` cancels superseded runs.
+- [ ] **Action versions:** pinned to the major versions the repo already uses (`actions/checkout@v4`, as in `claude-code-review.yml`).
 
-## 3. Write `.gitlab-ci.yml`
+## 3. Verify locally
 
-Start from [gitlab-ci.template.yml](gitlab-ci.template.yml) in this folder, and copy it to the repo root as `.gitlab-ci.yml`. Then check each point against the repo as it is now, not as it was when the template was written:
+GitHub runs the same commands, so run them here first:
 
-- [ ] **Playwright image:** the e2e image tag equals the installed version, `node -p 'require("./package-lock.json").packages["node_modules/@playwright/test"].version'`. A mismatch fails with "Executable doesn't exist" for Chromium.
-- [ ] **Node image:** the Node image major version satisfies Vite's and Vitest's `engines` in `package-lock.json`. The template uses `node:24`.
-- [ ] **Jobs match the Checks section of `CLAUDE.md`:** `npm test`, `npm run typecheck`, `npm run lint`, `node --test .claude/hooks/*.test.mjs`, `npm run build` and `npm run test:e2e`. If CLAUDE.md lists a check that has no job, add the job.
-- [ ] **No `allow_failure`, no `|| true`, no skipped tests.** A red check must fail the pipeline.
-- [ ] **No secrets and no CI variables.** Nothing in this pipeline needs credentials.
-- [ ] **Runner tags:** if the user named tags in section 1, add them under `default: tags:`.
-- [ ] **Workflow rules:** pipelines run for merge requests and for pushes to `feat/practice` and the default branch. A branch with an open MR doesn't get a second, duplicate branch pipeline.
-
-## 4. Verify locally
-
-GitLab runs the same npm commands, so run them here first:
-
-- [ ] `npm ci`
-- [ ] `npm test -- --reporter=default --reporter=junit --outputFile.junit=junit.xml`. It must pass and write `junit.xml`. Delete that file afterwards.
-- [ ] `npm run typecheck`, `npm run lint`, `npm run build`
+- [ ] `npm ci`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`
 - [ ] `node --test .claude/hooks/*.test.mjs` from the repo root
-- [ ] `CI=1 npm run test:e2e`. This checks the new reporters write `test-results/junit.xml` and `playwright-report/index.html`. Delete both afterwards.
-- [ ] **Validate the YAML.** If the GitLab MCP has a CI lint tool (call `discover_tools` and look in the pipeline category), lint the file against project `thao.ha/claude`. Otherwise parse it locally with `node -e "require('yaml').parse(require('fs').readFileSync('.gitlab-ci.yml','utf8'))"` if `yaml` is installed, and say that full validation happens on the first pipeline.
-- [ ] **Optional:** run the e2e job in its real image with `docker run --rm -v "$PWD":/w -w /w/expense-tracker mcr.microsoft.com/playwright:v<version>-noble sh -c 'npm ci && CI=1 npm run test:e2e'`. Ask before pulling, because the image is about 2 GB. Afterwards, check that it didn't leave root-owned files in `node_modules/`.
+- [ ] `CI=1 npm run test:e2e`. Afterwards, delete any `test-results/` it leaves behind.
+- [ ] **Parse the workflow:** `node -e "require('yaml').parse(require('fs').readFileSync('../.github/workflows/ci.yml','utf8'))"` from `expense-tracker/`. If `actionlint` is installed, run it too. Otherwise, say that full validation happens on the first run.
 
 Don't change code or tests just to make a check pass. A failure is a finding for the user.
 
-## 5. Update the docs that say there is no CI
+## 4. Update the docs that say there is no CI
 
-- [ ] `.claude/loop.md` step 4 says there is no pipeline. Rewrite it to report the latest pipeline status for the current branch's MR, `feat/practice` and `main`. Keep the "there is no deploy environment yet" part.
-- [ ] Add a short "CI" section to `expense-tracker/README.md`. It says what runs and when, where to find the e2e report (job artifacts, kept 1 week), and that there is no deploy and why (one line linking to this skill).
+- [ ] `.claude/loop.md` step 4 says there is no pipeline. Rewrite it to report the latest CI run for the current branch's PR, `feat/practice` and `main` on GitHub. Keep the "there is no deploy environment yet" part.
+- [ ] Add a short "CI" section to `expense-tracker/README.md`. It says what runs and when, where the e2e traces are on failure (run artifacts, kept 7 days), and that there is no deploy and why (one line linking to this skill).
 
-## 6. Commit and hand off
+## 5. Commit and hand off
 
-1. Show the user the final `.gitlab-ci.yml` and the `playwright.config.ts` diff.
-2. Commit on `chore/gitlab-ci` as two commits, one logical change each:
-   - `chore: Report Playwright results as JUnit and HTML in CI`
-   - `chore: Add GitLab CI pipeline`
+1. Show the user the final `ci.yml`.
+2. Commit everything as one change: `chore: Add GitHub Actions CI workflow`. Use one line, no body, no trailers.
+3. Hand the push to the user (Claude can't push). Put this command in its own `bash` block: `git push -u github chore/github-ci`.
+4. After the push, open a PR into `feat/practice` on `thaoha-agilityio/claude`. Write its body from `.gitlab/merge_request_templates/default.md` (the team template), with every section kept. Tick only what you actually ran.
+5. Read the PR's first CI run with the GitHub tools (the PR's check runs, or `gh run view`): each job's result and the failing step's log. Don't re-run or cancel runs. Report what you saw.
 
-   The docs updates go with the pipeline commit. Use one line per message, no body, no trailers.
-3. Hand the push to the user (Claude can't push). Put this command in its own `bash` block: `git push -u origin chore/gitlab-ci`.
-4. After the push, open the MR into `feat/practice` from `.gitlab/merge_request_templates/default.md`, with every section kept. Tick only what you actually ran. Put the runner answer from section 1 under Additional Information.
-5. If GitLab MCP pipeline tools are available, read the MR's first pipeline: each job's status and the failing job's log. Don't retry or cancel jobs. Report what you saw.
+## 6. Report
 
-## 7. Report
-
-End with a table of every item (item, result, note): the runner answer, the image versions used, local results, and the pipeline status if one ran. Add one line on what a deploy would still need: auth, persistent storage and serving `dist/`.
+End with a table of every item (item, result, note): the Node version, local results, and the first run's status. Add one line on what a deploy would still need: auth, persistent storage and serving `dist/`.
