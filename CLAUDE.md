@@ -14,13 +14,16 @@ Run all npm commands from
 ```
 .claude/                   shared Claude Code settings and the git-committer agent
 .gitlab/                   MR template (default.md)
+.mcp.json                  registers the expense-tracker MCP server for Claude Code
 expense-tracker/
   src/domain/              pure logic: types, money, dates, validation, reports — no React, no storage
   src/storage/             persistence (storage.ts) and CRUD + errors (repository.ts), run by the server
   src/api/                 Api interface: HTTP client (http.ts) and in-process adapter for tests (api.ts)
   src/state/               StoreProvider (loads and saves through the Api) and useStore()
   src/components/, pages/  UI; CSS modules next to the component
-  server/                  REST API (app.ts) over the repository, with file-backed Storage
+  server/                  REST API: web-standard handler (api.ts), Node adapter (app.ts), file-backed Storage
+  worker/                  Cloudflare Worker: static assets + API in a Durable Object over SQLite Storage
+  mcp/                     MCP server (server.ts): expense tools that call the REST API
   e2e/                     Playwright specs and fixtures; they start their own API server
 ```
 
@@ -87,6 +90,10 @@ Hosted on GitLab (`gitlab.asoft-python.com`, project `thao.ha/claude`).
 - One logical change per commit; don't commit `dist/`, `node_modules/`, reports or `.env` files.
 - Claude may stage and commit but not push, reset or rebase (see `.claude/settings.json`); a person
   pushes the branch. Don't amend or force-push shared branches.
+- The PreToolUse hook `.claude/hooks/block-forbidden-command.mjs` enforces this for every Bash call, even
+  inside `cd x && …` or `bash -c "…"`: it refuses push, reset, rebase, `--amend`, `--no-verify`,
+  force-moving branches, commits on `feat/practice` or `main`, and `rm -rf` on `/`, `~`, `.`, `..` or
+  `.git`. Change its rules and tests together; run them with `node --test .claude/hooks/*.test.mjs`.
 - Fill in `.gitlab/merge_request_templates/default.md` for every MR, keeping all its sections. Tick
   only checkboxes that are actually true (e.g. "Unit tests pass" only after running `npm test`); write
   "N/A" for sections that don't apply instead of deleting them.
