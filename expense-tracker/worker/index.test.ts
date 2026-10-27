@@ -50,3 +50,18 @@ test('has no reset endpoint in production', async () => {
   const res = await worker.fetch(new Request('https://x.test/api/__reset', { method: 'POST' }), env())
   expect(res.status).toBe(404)
 })
+
+test('rejects a body not sent as JSON, so other sites cannot post to the deployed API', async () => {
+  const e = env()
+  const res = await worker.fetch(
+    new Request('https://x.test/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ name: 'Hacked' }),
+    }),
+    e,
+  )
+  expect(res.status).toBe(415)
+  const data = await (await worker.fetch(new Request('https://x.test/api/data'), e)).json()
+  expect(data.categories.map((c: { name: string }) => c.name)).not.toContain('Hacked')
+})
