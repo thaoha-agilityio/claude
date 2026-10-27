@@ -14,8 +14,9 @@ line and move on; don't wait for an answer.
    can't push in this repo.
 3. **Checks.** If files or local commits changed since the last tick, run `npm test`,
    `npm run typecheck` and `npm run lint` in `expense-tracker/` and report any failure with its output.
-4. **Deploy.** There is no CI pipeline (`.gitlab-ci.yml`) or deploy environment yet, so skip this.
-   Once one exists, report the latest pipeline and deployment status for `feat/practice` and `main`.
+4. **CI.** CI runs on GitHub Actions (`.github/workflows/ci.yml` on `thaoha-agilityio/claude`). Report the latest
+   run for the current branch's PR, `feat/practice` and `main`, with the failing job and step if any. Don't re-run or
+   cancel runs. There is no deploy environment yet, so there is nothing to deploy.
 5. **Nothing to do.** Say so in one line, without listing what you checked.
 
 Never on a tick: push or force-push, rebase, reset, delete branches, close or merge MRs, or post

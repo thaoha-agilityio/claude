@@ -21,7 +21,8 @@ expense-tracker/
   src/api/                 Api interface: HTTP client (http.ts) and in-process adapter for tests (api.ts)
   src/state/               StoreProvider (loads and saves through the Api) and useStore()
   src/components/, pages/  UI; CSS modules next to the component
-  server/                  REST API (app.ts) over the repository, with file-backed Storage
+  server/                  REST API: web-standard handler (api.ts), Node adapter (app.ts), file-backed Storage
+  worker/                  Cloudflare Worker: static assets + API in a Durable Object over SQLite Storage
   mcp/                     MCP server (server.ts): expense tools that call the REST API
   e2e/                     Playwright specs and fixtures; they start their own API server
 ```
