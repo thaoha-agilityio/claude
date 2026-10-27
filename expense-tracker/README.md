@@ -79,6 +79,14 @@ on port 4173, and runs the specs in `e2e/` one at a time in Chromium with the `A
 clock (15 Oct 2026). Each test starts from freshly seeded data (`POST /api/__reset`, enabled only by `API_RESET=1`).
 Use `npx playwright test --ui` to debug, and `npx playwright show-report` after a failure.
 
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `feat/practice` and `main`:
+unit tests, typecheck, lint, build and the Claude hook tests in one job, and the Playwright e2e tests in another.
+Failures show up as annotations on the PR; when e2e fails, its traces are uploaded as the `playwright-test-results`
+artifact of the run (kept 7 days). There is no deploy: the API has no auth and keeps its data on disk (see
+`.claude/skills/deploy-setup/SKILL.md`).
+
 ## Scripts
 
 | Command              | Description                        |
