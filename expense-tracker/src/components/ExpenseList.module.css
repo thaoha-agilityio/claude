@@ -1,0 +1,48 @@
+.table {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
+  font-size: 0.9rem;
+}
+
+.table tbody tr:hover {
+  background: var(--color-surface-tint);
+}
+
+.amount {
+  text-align: right !important;
+  white-space: nowrap;
+}
+
+.notes {
+  min-width: 10rem; /* scroll the table rather than squeeze notes to one letter per line */
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  white-space: nowrap;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
