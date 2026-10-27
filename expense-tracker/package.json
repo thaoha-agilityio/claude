@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "server": "tsx server/main.ts",
     "mcp": "tsx mcp/main.ts",
+    "worker:dev": "npm run build && wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
     "mcp:inspect": "MCP_INSPECTOR_SECRET_STORE=memory mcp-inspector --web -e EXPENSE_API_URL=${EXPENSE_API_URL:-http://127.0.0.1:3001/api} tsx mcp/main.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -44,6 +46,7 @@
     "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4",
+    "wrangler": "^4.153.0",
     "zod": "^4.6.7"
   }
 }
