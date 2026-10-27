@@ -1,5 +1,5 @@
 # Checks from CLAUDE.md, run on pull requests and on pushes to feat/practice and main.
-# No deploy: the API has no auth and keeps its data on disk (see .claude/skills/deploy-setup/SKILL.md).
+# A push to main that passes them deploys to Cloudflare (README "Deploy", .claude/skills/deploy-setup/SKILL.md).
 name: CI
 
 on:
@@ -10,10 +10,10 @@ on:
 permissions:
   contents: read
 
-# A new push to the same PR or branch cancels the run that's still going.
+# A new push to the same PR or branch cancels the run that's still going, except on main, so a deploy is never cut off.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 defaults:
   run:
@@ -58,3 +58,25 @@ jobs:
           name: playwright-test-results
           path: expense-tracker/test-results/
           retention-days: 7
+
+  # Only after both checks pass on a push to main. Needs the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets.
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, e2e]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: expense-tracker/package-lock.json
+      - run: npm ci
+      - run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
