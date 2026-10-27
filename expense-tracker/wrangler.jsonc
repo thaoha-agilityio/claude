@@ -1,0 +1,20 @@
+// Cloudflare Worker: serves the built app (dist/) and the REST API from one Durable Object. See README "Deploy".
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "expense-tracker",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Client-side routes such as /reports get index.html; the API is handled by the Worker before assets.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "EXPENSES", "class_name": "ExpenseStore" }]
+  },
+  // SQLite-backed, so ExpenseStore gets synchronous ctx.storage.sql. Never edit a released migration; add a new tag.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ExpenseStore"] }],
+  "observability": { "enabled": true }
+}

@@ -16,5 +16,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["server", "mcp"]
+  "include": ["server", "mcp", "worker/**/*.test.ts", "worker/testSqlite.ts"]
 }
