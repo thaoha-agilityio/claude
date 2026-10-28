@@ -90,11 +90,27 @@ Hosted on GitLab (`gitlab.asoft-python.com`, project `thao.ha/claude`).
 - One logical change per commit; don't commit `dist/`, `node_modules/`, reports or `.env` files.
 - Claude may stage and commit but not push, reset or rebase (see `.claude/settings.json`); a person
   pushes the branch. Don't amend or force-push shared branches.
-- The PreToolUse hook `.claude/hooks/block-forbidden-command.mjs` enforces this for every Bash call, even
-  inside `cd x && …` or `bash -c "…"`: it refuses push, reset, rebase, `--amend`, `--no-verify`,
-  force-moving branches, commits on `feat/practice` or `main`, and `rm -rf` on `/`, `~`, `.`, `..` or
-  `.git`. It also refuses approving a PR review and merging any PR, with `gh` or the GitHub MCP tools: a person
-  approves and merges. Change its rules and tests together; run them with `node --test .claude/hooks/*.test.mjs`.
 - Fill in `.gitlab/merge_request_templates/default.md` for every MR, keeping all its sections. Tick
   only checkboxes that are actually true (e.g. "Unit tests pass" only after running `npm test`); write
   "N/A" for sections that don't apply instead of deleting them.
+
+## Guard rails
+
+The guard is the PreToolUse hook `.claude/hooks/block-forbidden-command.mjs`. It checks every Bash call (even inside
+`cd x && …` or `bash -c "…"`), the file tools and the GitHub review/merge tools, and says why when it refuses. Change
+its rules and tests together; run them with `node --test .claude/hooks/*.test.mjs`.
+
+| Rule | Enforced by |
+| --- | --- |
+| Claude never pushes; a person pushes every branch | `.claude/settings.json` deny list and the guard |
+| No commits on `feat/practice` or `main` | The guard |
+| No history rewrites: reset, rebase, `--amend`, `--no-verify`, force-moving branches, filter-branch | The deny list and the guard |
+| No approving a PR review or merging any PR, with `gh` or the GitHub MCP tools | The guard |
+| No reading or editing `.env*` (except `.env.example`), `.dev.vars`, keys or certificates | The guard; ask the user for a value instead. `.gitignore` keeps them out of git |
+| No `rm -rf` on `/`, `~`, `.`, `..` or `.git` | The guard |
+| Nothing is committed before the user has seen the diff and approved it | The `git-committer` agent refuses without an approval |
+| A bug fix comes with a test that fails without it; tests aren't changed just to make a check pass | This file and `/review-changes`; no code enforces it |
+| A release ships only from a `release/<version>` PR approved on its exact head commit | `/release-checklist`'s approval gate, the guard (Claude can't approve or merge) and CI, which deploys only from `main` |
+
+The guard stops mistakes, not someone determined to get around it. The real protection for `main` and
+`feat/practice` is branch protection on GitHub and GitLab.
