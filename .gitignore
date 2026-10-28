@@ -1,0 +1,13 @@
+# Secrets, anywhere in the repo. Keep in step with isSecretPath() in .claude/hooks/block-forbidden-command.mjs.
+.env*
+!.env.example
+!.env.sample
+!.env.template
+.dev.vars
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
