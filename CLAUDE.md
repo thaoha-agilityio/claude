@@ -93,7 +93,8 @@ Hosted on GitLab (`gitlab.asoft-python.com`, project `thao.ha/claude`).
 - The PreToolUse hook `.claude/hooks/block-forbidden-command.mjs` enforces this for every Bash call, even
   inside `cd x && …` or `bash -c "…"`: it refuses push, reset, rebase, `--amend`, `--no-verify`,
   force-moving branches, commits on `feat/practice` or `main`, and `rm -rf` on `/`, `~`, `.`, `..` or
-  `.git`. Change its rules and tests together; run them with `node --test .claude/hooks/*.test.mjs`.
+  `.git`. It also refuses approving a PR review and merging any PR, with `gh` or the GitHub MCP tools: a person
+  approves and merges. Change its rules and tests together; run them with `node --test .claude/hooks/*.test.mjs`.
 - Fill in `.gitlab/merge_request_templates/default.md` for every MR, keeping all its sections. Tick
   only checkboxes that are actually true (e.g. "Unit tests pass" only after running `npm test`); write
   "N/A" for sections that don't apply instead of deleting them.

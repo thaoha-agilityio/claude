@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
-import { check, splitCommands } from './block-forbidden-command.mjs'
+import { check, checkTool, splitCommands } from './block-forbidden-command.mjs'
 
 const onBranch = (branch) => ({ currentBranch: () => branch })
 const blocked = (command, branch = 'feat/x') => assert.ok(check(command, onBranch(branch)), `expected "${command}" to be blocked`)
@@ -74,6 +74,34 @@ test('allows everyday commands, including ones that only mention forbidden words
   }
 })
 
+test('blocks approving and merging pull requests with gh, but not other PR commands', () => {
+  for (const command of [
+    'gh pr review 3 --approve',
+    'gh pr review -a',
+    'gh pr review 3 --approve --body "ship it"',
+    'cd x && gh pr merge 3 --squash',
+    'bash -c "gh pr merge 3"',
+  ]) {
+    blocked(command)
+  }
+  allowed('gh pr review 3 --comment -b "looks fine"')
+  allowed('gh pr review 3 --request-changes -b "see thread"')
+  allowed('gh pr view 3')
+  allowed('gh pr create --base main --head release/v0.1.0')
+  allowed('echo "gh pr merge"')
+})
+
+test('blocks approving reviews and every merge through the GitHub tools', () => {
+  const review = (input) => checkTool('mcp__github__pull_request_review_write', { owner: 'o', repo: 'r', pullNumber: 3, ...input })
+  assert.ok(review({ method: 'create', event: 'APPROVE' }))
+  assert.ok(review({ method: 'submit_pending', event: 'APPROVE' }))
+  assert.equal(review({ method: 'create', event: 'COMMENT', body: 'x' }), null)
+  assert.equal(review({ method: 'create', event: 'REQUEST_CHANGES', body: 'x' }), null)
+  assert.equal(review({ method: 'resolve_thread', threadId: 'PRRT_x' }), null)
+  assert.ok(checkTool('mcp__github__merge_pull_request', { owner: 'o', repo: 'r', pullNumber: 3 }))
+  assert.equal(checkTool('mcp__github__pull_request_read', { method: 'get', pullNumber: 3 }), null)
+})
+
 test('as a hook: denies with a reason on stdout, and stays silent otherwise', () => {
   const script = fileURLToPath(new URL('./block-forbidden-command.mjs', import.meta.url))
   const run = (input) => execFileSync('node', [script], { input: JSON.stringify(input), encoding: 'utf-8' })
@@ -84,4 +112,10 @@ test('as a hook: denies with a reason on stdout, and stays silent otherwise', ()
 
   assert.equal(run({ tool_name: 'Bash', tool_input: { command: 'git status' }, cwd: '/tmp' }), '')
   assert.equal(run({ tool_name: 'Read', tool_input: { file_path: '/etc/hosts' } }), '')
+
+  const merge = JSON.parse(run({ tool_name: 'mcp__github__merge_pull_request', tool_input: { pullNumber: 3 } }))
+  assert.equal(merge.hookSpecificOutput.permissionDecision, 'deny')
+  assert.match(merge.hookSpecificOutput.permissionDecisionReason, /does not merge/)
+  const comment = { method: 'create', event: 'COMMENT', pullNumber: 3 }
+  assert.equal(run({ tool_name: 'mcp__github__pull_request_review_write', tool_input: comment }), '')
 })
