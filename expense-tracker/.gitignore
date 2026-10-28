@@ -7,3 +7,6 @@ CLAUDE.local.md
 .claude/settings.local.json
 /data
 .wrangler
+.env*
+!.env.example
+.dev.vars

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// PreToolUse hook for Bash and the GitHub review/merge tools: refuses what this repo doesn't let Claude do (see
-// "Git and merge requests" in CLAUDE.md). It backs up the deny patterns in .claude/settings.json, which only match a
+// PreToolUse hook for Bash, the file tools and the GitHub review/merge tools: refuses what this repo doesn't let
+// Claude do (see "Guard rails" in CLAUDE.md). It backs up the deny patterns in .claude/settings.json, which only match a
 // command's start and so miss `cd x && git push` or `git -C dir reset`. Approving and merging pull requests stay a
 // person's job, through `gh` or the GitHub MCP tools alike.
 import { execFileSync } from 'node:child_process'
@@ -84,6 +84,15 @@ const DANGEROUS_RM_TARGETS = new Set(['/', '/*', '~', '~/', '$HOME', '${HOME}', 
 const APPROVE_REASON = 'Approving a pull request is a person’s decision; ask a reviewer to approve it on GitHub.'
 const MERGE_REASON = 'Claude does not merge pull requests here; the user merges in GitHub once it is approved.'
 
+const SECRET_REASON = 'Secret files (.env, .dev.vars, keys and certificates) stay unread; ask the user for the value you need.'
+
+/** True for files that hold secrets: `.env*` except committed examples, wrangler's `.dev.vars`, keys and certificates. */
+export function isSecretPath(path) {
+  const name = String(path).split('/').pop()
+  if (/^\.env(\..+)?$/.test(name)) return !/^\.env\.(example|sample|template)$/.test(name)
+  return name === '.dev.vars' || /\.(pem|key|p8|p12|pfx|jks|keystore)$/i.test(name)
+}
+
 const hasFlag = (args, long, short) =>
   args.some((a) => a === long || a.startsWith(`${long}=`) || (short && /^-[A-Za-z]+$/.test(a) && a.includes(short)))
 
@@ -100,6 +109,9 @@ export function check(command, { currentBranch = () => null } = {}) {
     const [name] = words
     if (!name) continue
     const program = name.split('/').pop()
+
+    // Any command naming a secret file (cat .env, cp .dev.vars x, git add .env) would read or spread it.
+    if (words.some(isSecretPath)) return SECRET_REASON
 
     // Look inside `bash -c "…"` and `eval "…"`.
     if (['bash', 'sh', 'zsh'].includes(program)) {
@@ -160,10 +172,13 @@ export function check(command, { currentBranch = () => null } = {}) {
 }
 
 /**
- * Returns why a non-Bash tool call is forbidden, or null. The GitHub tools merge by PR number alone, so the hook
- * can't tell a release PR from any other: every merge is refused, and every approving review.
+ * Returns why a non-Bash tool call is forbidden, or null. File tools may not touch secret files. The GitHub tools
+ * merge by PR number alone, so the hook can't tell a release PR from any other: every merge is refused, and every
+ * approving review.
  */
 export function checkTool(toolName, toolInput = {}) {
+  const path = toolInput.file_path ?? toolInput.notebook_path ?? toolInput.path
+  if (['Read', 'Edit', 'Write', 'NotebookEdit', 'Grep'].includes(toolName) && path && isSecretPath(path)) return SECRET_REASON
   if (toolName === 'mcp__github__merge_pull_request') return MERGE_REASON
   if (toolName === 'mcp__github__pull_request_review_write' && toolInput.event === 'APPROVE') return APPROVE_REASON
   return null

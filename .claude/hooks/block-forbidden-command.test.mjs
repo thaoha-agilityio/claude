@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
-import { check, checkTool, splitCommands } from './block-forbidden-command.mjs'
+import { check, checkTool, isSecretPath, splitCommands } from './block-forbidden-command.mjs'
 
 const onBranch = (branch) => ({ currentBranch: () => branch })
 const blocked = (command, branch = 'feat/x') => assert.ok(check(command, onBranch(branch)), `expected "${command}" to be blocked`)
@@ -100,6 +100,29 @@ test('blocks approving reviews and every merge through the GitHub tools', () => 
   assert.equal(review({ method: 'resolve_thread', threadId: 'PRRT_x' }), null)
   assert.ok(checkTool('mcp__github__merge_pull_request', { owner: 'o', repo: 'r', pullNumber: 3 }))
   assert.equal(checkTool('mcp__github__pull_request_read', { method: 'get', pullNumber: 3 }), null)
+})
+
+test('recognises secret files but not committed examples or ordinary files', () => {
+  for (const path of ['.env', 'expense-tracker/.env.local', '/home/x/.env.production', '.dev.vars', 'certs/ca.pem', 'AuthKey_X.p8', 'release.keystore']) {
+    assert.ok(isSecretPath(path), path)
+  }
+  for (const path of ['.env.example', '.env.sample', 'src/env.ts', 'environment.md', 'wrangler.jsonc', 'keys.ts']) {
+    assert.equal(isSecretPath(path), false, path)
+  }
+})
+
+test('blocks commands and file tools that touch secret files', () => {
+  for (const command of ['cat .env', 'cd expense-tracker && grep TOKEN .env.local', 'cp .dev.vars /tmp/x', 'git add .env', 'bash -c "head -1 certs/ca.pem"']) {
+    blocked(command)
+  }
+  allowed('cat .env.example')
+  allowed('git commit -m "chore: ignore .env files"')
+  assert.ok(checkTool('Read', { file_path: '/home/thaoha/claude/expense-tracker/.env' }))
+  assert.ok(checkTool('Edit', { file_path: '.dev.vars', old_string: 'a', new_string: 'b' }))
+  assert.ok(checkTool('Write', { file_path: 'certs/server.key', content: 'x' }))
+  assert.ok(checkTool('Grep', { pattern: 'TOKEN', path: '.env.production' }))
+  assert.equal(checkTool('Read', { file_path: 'expense-tracker/.env.example' }), null)
+  assert.equal(checkTool('Read', { file_path: 'expense-tracker/src/App.tsx' }), null)
 })
 
 test('as a hook: denies with a reason on stdout, and stays silent otherwise', () => {
