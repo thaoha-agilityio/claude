@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// PreToolUse hook for Bash: refuses commands this repo doesn't let Claude run (see "Git and merge requests" in
-// CLAUDE.md). It backs up the deny patterns in .claude/settings.json, which only match a command's start and so
-// miss `cd x && git push` or `git -C dir reset`.
+// PreToolUse hook for Bash and the GitHub review/merge tools: refuses what this repo doesn't let Claude do (see
+// "Git and merge requests" in CLAUDE.md). It backs up the deny patterns in .claude/settings.json, which only match a
+// command's start and so miss `cd x && git push` or `git -C dir reset`. Approving and merging pull requests stay a
+// person's job, through `gh` or the GitHub MCP tools alike.
 import { execFileSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 
@@ -80,6 +81,9 @@ function stripPrefixes(words) {
 
 const DANGEROUS_RM_TARGETS = new Set(['/', '/*', '~', '~/', '$HOME', '${HOME}', '.', './', '..', '../', '*', '.git', '.git/'])
 
+const APPROVE_REASON = 'Approving a pull request is a person’s decision; ask a reviewer to approve it on GitHub.'
+const MERGE_REASON = 'Claude does not merge pull requests here; the user merges in GitHub once it is approved.'
+
 const hasFlag = (args, long, short) =>
   args.some((a) => a === long || a.startsWith(`${long}=`) || (short && /^-[A-Za-z]+$/.test(a) && a.includes(short)))
 
@@ -122,6 +126,13 @@ export function check(command, { currentBranch = () => null } = {}) {
       continue
     }
 
+    if (program === 'gh') {
+      const [, area, action, ...args] = words
+      if (area === 'pr' && action === 'review' && hasFlag(args, '--approve', 'a')) return APPROVE_REASON
+      if (area === 'pr' && action === 'merge') return MERGE_REASON
+      continue
+    }
+
     if (program !== 'git') continue
     const { sub, args, dir } = parseGit(words)
 
@@ -148,6 +159,16 @@ export function check(command, { currentBranch = () => null } = {}) {
   return null
 }
 
+/**
+ * Returns why a non-Bash tool call is forbidden, or null. The GitHub tools merge by PR number alone, so the hook
+ * can't tell a release PR from any other: every merge is refused, and every approving review.
+ */
+export function checkTool(toolName, toolInput = {}) {
+  if (toolName === 'mcp__github__merge_pull_request') return MERGE_REASON
+  if (toolName === 'mcp__github__pull_request_review_write' && toolInput.event === 'APPROVE') return APPROVE_REASON
+  return null
+}
+
 function gitBranch(cwd, dir) {
   try {
     const where = dir ? (dir.startsWith('/') ? dir : `${cwd}/${dir}`) : cwd
@@ -161,9 +182,13 @@ async function main() {
   let input = ''
   for await (const chunk of process.stdin) input += chunk
   const { tool_name: tool, tool_input: toolInput = {}, cwd = process.cwd() } = JSON.parse(input || '{}')
-  if (tool !== 'Bash' || typeof toolInput.command !== 'string') return
-
-  const reason = check(toolInput.command, { currentBranch: (dir) => gitBranch(cwd, dir) })
+  let reason
+  if (tool === 'Bash') {
+    if (typeof toolInput.command !== 'string') return
+    reason = check(toolInput.command, { currentBranch: (dir) => gitBranch(cwd, dir) })
+  } else {
+    reason = checkTool(tool, toolInput)
+  }
   if (!reason) return
   process.stdout.write(
     JSON.stringify({
