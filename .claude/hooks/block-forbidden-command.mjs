@@ -93,6 +93,31 @@ export function isSecretPath(path) {
   return name === '.dev.vars' || /\.(pem|key|p8|p12|pfx|jks|keystore)$/i.test(name)
 }
 
+const SECRET_SAMPLES = ['.env', '.env.local', '.env.production', '.dev.vars', 'a.pem', 'a.key', 'a.p8', 'a.p12', 'a.pfx', 'a.jks', 'a.keystore']
+const ORDINARY_SAMPLES = ['a.ts', 'a.md', 'a.json', 'a.log']
+
+/**
+ * True for a glob such as `.env*`, `certs/*.pem` or `**\/.dev.*` that aims at secret files: it matches one of them
+ * and no ordinary file. A bare `*` matches ordinary files too, so `ls *` stays allowed.
+ */
+export function isSecretGlob(glob) {
+  const name = String(glob).split('/').pop()
+  if (!/[*?[]/.test(name)) return false
+  const source = name.replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]')
+  let re
+  try {
+    re = new RegExp(`^${source}$`)
+  } catch {
+    return false
+  }
+  // Also fill the wildcards in (`AuthKey_?.p8` → `AuthKey_x.p8`) for globs whose fixed part names the secret.
+  const filledIn = name.replace(/\*/g, '').replace(/\?/g, 'x')
+  const aimsAtSecret = SECRET_SAMPLES.some((s) => re.test(s)) || isSecretPath(filledIn)
+  return aimsAtSecret && !ORDINARY_SAMPLES.some((s) => re.test(s))
+}
+
+const touchesSecret = (word) => isSecretPath(word) || isSecretGlob(word)
+
 const hasFlag = (args, long, short) =>
   args.some((a) => a === long || a.startsWith(`${long}=`) || (short && /^-[A-Za-z]+$/.test(a) && a.includes(short)))
 
@@ -110,8 +135,9 @@ export function check(command, { currentBranch = () => null } = {}) {
     if (!name) continue
     const program = name.split('/').pop()
 
-    // Any command naming a secret file (cat .env, cp .dev.vars x, git add .env) would read or spread it.
-    if (words.some(isSecretPath)) return SECRET_REASON
+    // Any command naming a secret file or a glob aimed at them (cat .env, cat .env*, git add .env) would read or
+    // spread it. A recursive search such as `grep -r TOKEN .` names no file and isn't caught here.
+    if (words.some(touchesSecret)) return SECRET_REASON
 
     // Look inside `bash -c "…"` and `eval "…"`.
     if (['bash', 'sh', 'zsh'].includes(program)) {
@@ -178,7 +204,8 @@ export function check(command, { currentBranch = () => null } = {}) {
  */
 export function checkTool(toolName, toolInput = {}) {
   const path = toolInput.file_path ?? toolInput.notebook_path ?? toolInput.path
-  if (['Read', 'Edit', 'Write', 'NotebookEdit', 'Grep'].includes(toolName) && path && isSecretPath(path)) return SECRET_REASON
+  if (['Read', 'Edit', 'Write', 'NotebookEdit', 'Grep'].includes(toolName) && path && touchesSecret(path)) return SECRET_REASON
+  if (toolName === 'Grep' && toolInput.glob && touchesSecret(toolInput.glob)) return SECRET_REASON
   if (toolName === 'mcp__github__merge_pull_request') return MERGE_REASON
   if (toolName === 'mcp__github__pull_request_review_write' && toolInput.event === 'APPROVE') return APPROVE_REASON
   return null

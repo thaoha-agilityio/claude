@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
-import { check, checkTool, isSecretPath, splitCommands } from './block-forbidden-command.mjs'
+import { check, checkTool, isSecretGlob, isSecretPath, splitCommands } from './block-forbidden-command.mjs'
 
 const onBranch = (branch) => ({ currentBranch: () => branch })
 const blocked = (command, branch = 'feat/x') => assert.ok(check(command, onBranch(branch)), `expected "${command}" to be blocked`)
@@ -123,6 +123,24 @@ test('blocks commands and file tools that touch secret files', () => {
   assert.ok(checkTool('Grep', { pattern: 'TOKEN', path: '.env.production' }))
   assert.equal(checkTool('Read', { file_path: 'expense-tracker/.env.example' }), null)
   assert.equal(checkTool('Read', { file_path: 'expense-tracker/src/App.tsx' }), null)
+})
+
+test('blocks globs aimed at secret files, but not globs that match ordinary files too', () => {
+  for (const glob of ['.env*', '.env.*', 'certs/*.pem', '**/.dev.*', '*.p12', 'AuthKey_?.p8']) {
+    assert.ok(isSecretGlob(glob), glob)
+  }
+  for (const glob of ['*', '*.ts', 'src/**/*', '*.md', '.env']) {
+    assert.equal(isSecretGlob(glob), false, glob)
+  }
+  for (const command of ['cat .env*', 'ls certs/*.pem', 'cd expense-tracker && head .dev.*']) {
+    blocked(command)
+  }
+  allowed('ls *')
+  allowed('git add src/*.ts')
+  allowed('rm -f *.log')
+  assert.ok(checkTool('Grep', { pattern: 'TOKEN', glob: '.env*' }))
+  assert.ok(checkTool('Grep', { pattern: 'BEGIN', glob: '**/*.pem' }))
+  assert.equal(checkTool('Grep', { pattern: 'TOKEN', glob: '*.ts' }), null)
 })
 
 test('as a hook: denies with a reason on stdout, and stays silent otherwise', () => {
